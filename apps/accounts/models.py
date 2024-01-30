@@ -4,12 +4,13 @@ from django.utils.translation import gettext_lazy as _
 import uuid
 
 from autoslug import AutoSlugField
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .managers import CustomUserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    id = models.UUIDField(default=uuid.uuid4(), unique=True, primary_key=True)
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     
@@ -34,4 +35,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return self.full_name
+    
+    def tokens(self):
+        refresh = RefreshToken.for_user(self)
+        return {
+            'refresh':str(refresh),
+            'access': str(refresh.access_token)
+        }
+
 

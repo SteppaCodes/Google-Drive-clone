@@ -2,8 +2,10 @@ asgiref==3.7.2
 Django==5.0.1
 django-autoslug==1.9.9
 djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.1
 pillow==10.2.0
 psycopg2==2.9.9
+PyJWT==2.8.0
 python-decouple==3.8
 pytz==2023.4
 sqlparse==0.4.4
