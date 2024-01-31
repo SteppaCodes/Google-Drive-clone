@@ -31,3 +31,21 @@ class FileListCreateView(APIView):
         serializer.save(owner=user)
         return Response({"data":serializer.data}, status=status.HTTP_201_CREATED)
         
+
+class FileUpdateDestroyView(APIView):
+    serializer_class = FileSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, id):
+        file = File.objects.get(id=id)
+        serializer = self.serializer_class(file, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"Success":"file update succesflly",
+                        "data":serializer.data})
+
+    def delete(self, request, id):
+        file = File.objects.get(id=id)
+        file.delete()
+
+        return Response({"success":"file deleted succesfully"})
