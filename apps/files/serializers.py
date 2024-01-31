@@ -16,6 +16,7 @@ class FileSerializer(serializers.ModelSerializer):
             'file',
             'name',
             'owner',
+            'folder',
             'size',
             'created_at',
             'updated_at'

@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 from .models import File
 from .serializers import FileSerializer
@@ -9,6 +9,7 @@ from .serializers import FileSerializer
 
 from django.utils.translation import gettext_lazy as _
 from django.http import FileResponse
+
 
 class FileListCreateView(APIView):
     serializer_class = FileSerializer
@@ -53,13 +54,12 @@ class FileUpdateDestroyView(APIView):
 
 
 class DownloadFileAPIView(APIView):
-    permission_classes = [AllowAny]
+    
     def get(self, request, file_id):
         try:
             file = File.objects.get(id=file_id)
         except File.DoesNotExist:
             return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
-
         
         file_path = file.file.path
 
