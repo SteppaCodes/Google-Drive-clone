@@ -1,2 +1,4 @@
-# File-manager-API
-A simple file manager built with django rest framework
+# Google Drive Clone
+Google Drive clone built with django rest framework
+
+
