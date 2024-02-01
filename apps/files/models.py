@@ -1,8 +1,10 @@
 from django.db import models
+from django.contrib.contenttypes.fields import  GenericRelation
 
-from apps.common.models import BaseModel
+from apps.common.models import BaseModel#, StarredItem
 from apps.accounts.models import User
 from apps.folders.models import Folder
+
 
 class File(BaseModel):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -12,3 +14,5 @@ class File(BaseModel):
 
     def __str__(self):
         return self.file.name
+
+# File.starred_items = GenericRelation(StarredItem, related_query_name='file_starred_items')

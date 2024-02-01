@@ -67,3 +67,5 @@ class DownloadFileAPIView(APIView):
         response = FileResponse(open(file_path, 'rb'))
         response['Content-Disposition'] = f'attachment; filename="{file.file.name}"'
         return response
+
+
