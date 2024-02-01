@@ -7,3 +7,5 @@ class StarredItemsSerielizer(serializers.ModelSerializer):
     class Meta:
         model = StarredItem
         fields = '__all__'
+
+    

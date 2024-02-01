@@ -1,18 +1,33 @@
 from rest_framework import serializers
-from .models import Folder
+from django.contrib.contenttypes.models import ContentType
 
+from .models import Folder
 from apps.files.serializers import  FileSerializer
+from apps.common.models import StarredItem
 
 class FolderSerializer(serializers.ModelSerializer):
+    starred = serializers.SerializerMethodField()
     class Meta:
         model = Folder
         fields = [
             'id',
             'name',
-            'owner'
+            'owner',
+            'starred'
         ]
 
         read_only_fields = ['owner', 'id']
+
+    def get_starred(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                starred_item = StarredItem.objects.get(user=request.user, 
+                                                       content_type=ContentType.objects.get_for_model(obj), object_id=obj.id)
+                return True
+            except StarredItem.DoesNotExist:
+                return False
+        return False
 
 
 class FolderWIthFilesSerializer(serializers.ModelSerializer):
@@ -24,5 +39,6 @@ class FolderWIthFilesSerializer(serializers.ModelSerializer):
             'id', 'name', 'files'
         ]
         
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'starred']
+
 

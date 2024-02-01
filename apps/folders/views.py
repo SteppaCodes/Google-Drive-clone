@@ -1,4 +1,5 @@
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -39,9 +40,13 @@ class FolderDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, id):
-        folder = Folder.objects.prefetch_related('files').get(id=id)
-        serializer = FolderWIthFilesSerializer(folder)
-        return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+        try:
+            folder = Folder.objects.prefetch_related('files').get(id=id)
+            serializer = FolderWIthFilesSerializer(folder)
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response(_("This folder does not exist"))
+        
 
     def put(self, request, id):
         folder = Folder.objects.get(id=id)
@@ -49,7 +54,7 @@ class FolderDetailAPIView(APIView):
         serializer.is_valid(raise_exceptions=True)
         serializer.save()
 
-        return Response({"success":"Folder updateed successfully", "data":serializer.data})
+        return Response({"success":"Folder updated successfully", "data":serializer.data})
     
     def delete(self, request, id):
         folder = Folder.objects.get(id=id)
