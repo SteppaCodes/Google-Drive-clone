@@ -21,7 +21,7 @@ class FileListCreateView(APIView):
        
         if files:
             serializer = self.serializer_class(files, many=True)
-            return Response({"data":serializer.data})
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response(_("You do not have any files"))
     
