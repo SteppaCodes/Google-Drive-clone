@@ -4,10 +4,9 @@ import os
 import sys
 from decouple import config
 
-
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', f'file_manager.settings.{config("SETTINGS")}')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', f'google_drive_clone.settings.{config("SETTINGS")}')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

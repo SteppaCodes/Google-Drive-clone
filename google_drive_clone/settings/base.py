@@ -46,7 +46,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'file_manager.urls'
+ROOT_URLCONF = 'google_drive_clone.urls'
 
 TEMPLATES = [
     {
@@ -64,11 +64,12 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'file_manager.wsgi.application'
+WSGI_APPLICATION = 'google_drive_clone.wsgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -79,9 +80,6 @@ DATABASES = {
         'PORT':config('POSTGRES_PORT')
     }
 }
-
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -116,6 +114,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
+
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
@@ -126,7 +125,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "static/media/")
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 
 REST_FRAMEWORK = {
