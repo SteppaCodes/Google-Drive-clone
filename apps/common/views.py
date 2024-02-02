@@ -1,9 +1,11 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.translation import gettext_lazy as _
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 from .models import StarredItem
 from .serializers import StarredItemsSerielizer
@@ -55,3 +57,17 @@ class UnstarItemAPIView(APIView):
         
         else:
             return Response({"error":"you cannot unstar an item that has not been starred"})
+
+
+class StarredItemsListAPIView(APIView):
+    serializer_class = StarredItemsSerielizer
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        starred_items = StarredItem.objects.filter(user=request.user)
+        if starred_items:
+            serializer = self.serializer_class(starred_items, many=True)
+            return Response({"data":serializer.data})
+        else:
+            return Response(_("You do not have any starred item"))
+        
+

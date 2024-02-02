@@ -19,7 +19,7 @@ class FolderListCreateAPIView(APIView):
         user = request.user
         folders =  Folder.objects.filter(owner=user)
         if folders:
-            serializer = self.serializer_class(folders, many=True)
+            serializer = self.serializer_class(folders, many=True, context={"request":request})
             return Response({"data":serializer.data})
         else:
             return Response(_("You do not have any folders"))
@@ -61,3 +61,5 @@ class FolderDetailAPIView(APIView):
         if folder.owner == request.user:
             folder.delete()
             return Response({"success":"folder deleted successfully"}) 
+
+

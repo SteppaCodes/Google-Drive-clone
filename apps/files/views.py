@@ -20,13 +20,13 @@ class FileListCreateView(APIView):
         files = File.objects.filter(owner=user)
        
         if files:
-            serializer = self.serializer_class(files, many=True)
+            serializer = self.serializer_class(files, many=True, context={"request":request})
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response(_("You do not have any files"))
     
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={"request":request})
         serializer.is_valid(raise_exception=True)
 
         user = request.user
@@ -40,7 +40,7 @@ class FileUpdateDestroyView(APIView):
     
     def put(self, request, id):
         file = File.objects.get(id=id)
-        serializer = self.serializer_class(file, data=request.data)
+        serializer = self.serializer_class(file, data=request.data, context={"request":request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"Success":"file update succesflly",
