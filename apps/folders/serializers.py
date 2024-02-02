@@ -5,6 +5,7 @@ from .models import Folder
 from apps.files.serializers import  FileSerializer
 from apps.common.models import StarredItem
 
+
 class FolderSerializer(serializers.ModelSerializer):
     starred = serializers.SerializerMethodField()
     
@@ -22,6 +23,7 @@ class FolderSerializer(serializers.ModelSerializer):
 
     def get_starred(self, obj):
         request = self.context.get('request')
+        print(request)
         if request and request.user.is_authenticated:
             try:
                 starred_item = StarredItem.objects.get(user=request.user, 

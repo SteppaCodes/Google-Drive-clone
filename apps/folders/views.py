@@ -42,7 +42,7 @@ class FolderDetailAPIView(APIView):
     def get(self, request, id):
         try:
             folder = Folder.objects.prefetch_related('files', 'subfolders').get(id=id)
-            serializer = FolderWIthFilesSerializer(folder)
+            serializer = FolderWIthFilesSerializer(folder, context={'request':request})
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response(_("This folder does not exist"))
@@ -50,7 +50,7 @@ class FolderDetailAPIView(APIView):
 
     def put(self, request, id):
         folder = Folder.objects.get(id=id)
-        serializer = self.serializer_class(folder, data=request.data)
+        serializer = self.serializer_class(folder, data=request.data, context={'request':request})
         if serializer.is_valid():
             serializer.save()
 

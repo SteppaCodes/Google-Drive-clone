@@ -15,20 +15,27 @@ from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
 
 
+def get_item(id):
+    try:
+        item = File.objects.get(id=id)
+        serializer = FileSerializer(item)
+        return item, serializer
+    except ObjectDoesNotExist:
+        try:
+            item = Folder.objects.get(id=id)
+            serializer = FolderSerializer(item)
+            return item, serializer
+        except ObjectDoesNotExist:
+            return Response({"error":"item does not exist"})
+
+
 class StarItemAPIView(APIView):
     def post(self, request, id):
         #Get the item to be starred, if its a folder or file
-        try:
-            item = File.objects.get(id=id)
-            serializer = FileSerializer(item)
-        except ObjectDoesNotExist:
-            try:
-                item = Folder.objects.get(id=id)
-                serializer = FolderSerializer(item)
-            except ObjectDoesNotExist:
-                return Response({"error":"item does not exist"})
-        
-        
+        obj = get_item(id)
+        #get the returnd item and serialzer rfo the get_item function
+        item , serializer = obj[0],obj[1]
+
         starred_item, created = StarredItem.objects.get_or_create(user=request.user,  
                                                                   content_type=ContentType.objects.get_for_model(item), object_id=id)
         if created:
@@ -38,16 +45,10 @@ class StarItemAPIView(APIView):
 
 class UnstarItemAPIView(APIView):
     def delete(self, request, id):
-        try:
-            item = File.objects.get(id=id)
-            serializer = FileSerializer(item)
-        except ObjectDoesNotExist:
-            try:
-                item = Folder.objects.get(id=id)
-                serializer = FolderSerializer(item)
-            except ObjectDoesNotExist:
-                return Response({"error":"item does not exist"})
-        
+       #Get the item to be starred, if its a folder or file
+        obj = get_item(id)
+        item , serializer = obj[0],obj[1]
+
         starred_item = StarredItem.objects.filter(user=request.user, 
                                                   content_type=ContentType.objects.get_for_model(item), object_id=id)
         
@@ -71,3 +72,9 @@ class StarredItemsListAPIView(APIView):
             return Response(_("You do not have any starred item"))
         
 
+class CreateShareLink(APIView):
+    def post(self, request, id):
+        try:
+            file_obj = File.objects.get(id=id)
+        except:
+            pass
