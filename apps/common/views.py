@@ -15,15 +15,15 @@ from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
 
 
-def get_item(id):
+def get_item(self, id, request):
     try:
         item = File.objects.get(id=id)
-        serializer = FileSerializer(item)
+        serializer = FileSerializer(item, context={'request':request})
         return item, serializer
     except ObjectDoesNotExist:
         try:
             item = Folder.objects.get(id=id)
-            serializer = FolderSerializer(item)
+            serializer = FolderSerializer(item, context={'request':request})
             return item, serializer
         except ObjectDoesNotExist:
             return Response({"error":"item does not exist"})
@@ -32,7 +32,7 @@ def get_item(id):
 class StarItemAPIView(APIView):
     def post(self, request, id):
         #Get the item to be starred, if its a folder or file
-        obj = get_item(id)
+        obj = get_item(self, id, request)
         #get the returnd item and serialzer rfo the get_item function
         item , serializer = obj[0],obj[1]
 
@@ -46,7 +46,7 @@ class StarItemAPIView(APIView):
 class UnstarItemAPIView(APIView):
     def delete(self, request, id):
        #Get the item to be starred, if its a folder or file
-        obj = get_item(id)
+        obj = get_item(self,id, request)
         item , serializer = obj[0],obj[1]
 
         starred_item = StarredItem.objects.filter(user=request.user, 
@@ -54,7 +54,7 @@ class UnstarItemAPIView(APIView):
         
         if starred_item.exists():
             starred_item.delete()
-            return Response({"success":"item unstarred"})
+            return Response({"success":"item unstarred", 'data':serialzer.data})
         
         else:
             return Response({"error":"you cannot unstar an item that has not been starred"})
