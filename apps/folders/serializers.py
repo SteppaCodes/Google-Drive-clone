@@ -7,13 +7,15 @@ from apps.common.models import StarredItem
 
 class FolderSerializer(serializers.ModelSerializer):
     starred = serializers.SerializerMethodField()
+    
     class Meta:
         model = Folder
         fields = [
             'id',
             'name',
             'owner',
-            'starred'
+            'starred',
+            'folder'
         ]
 
         read_only_fields = ['owner', 'id']
@@ -28,15 +30,17 @@ class FolderSerializer(serializers.ModelSerializer):
             except StarredItem.DoesNotExist:
                 return False
         return False
+        
 
 
 class FolderWIthFilesSerializer(serializers.ModelSerializer):
     files = FileSerializer(read_only=True, many=True)
+    subfolders = FolderSerializer(read_only=True, many=True)
 
     class Meta:
         model = Folder
         fields = [
-            'id', 'name', 'files'
+            'id', 'name', 'files', 'subfolders'
         ]
         
         read_only_fields = ['id', 'starred']

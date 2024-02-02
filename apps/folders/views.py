@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Folder
 from .serializers import FolderSerializer, FolderWIthFilesSerializer
 
-#TODO ddd response statuses
+#TODO add response statuses
 
 class FolderListCreateAPIView(APIView):
     serializer_class = FolderSerializer
@@ -26,8 +26,8 @@ class FolderListCreateAPIView(APIView):
     
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer = self.serializer_class(data=request.data, context={"request":request})
+        serializer.is_valid(raise_exceptions=True)
 
         user = request.user
         serializer.save(owner=user)
@@ -41,7 +41,7 @@ class FolderDetailAPIView(APIView):
 
     def get(self, request, id):
         try:
-            folder = Folder.objects.prefetch_related('files').get(id=id)
+            folder = Folder.objects.prefetch_related('files', 'subfolders').get(id=id)
             serializer = FolderWIthFilesSerializer(folder)
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
@@ -51,10 +51,12 @@ class FolderDetailAPIView(APIView):
     def put(self, request, id):
         folder = Folder.objects.get(id=id)
         serializer = self.serializer_class(folder, data=request.data)
-        serializer.is_valid(raise_exceptions=True)
-        serializer.save()
+        if serializer.is_valid():
+            serializer.save()
 
-        return Response({"success":"Folder updated successfully", "data":serializer.data})
+            return Response({"success":"Folder updated successfully", "data":serializer.data})
+
+        return Response(serializer.errors)
     
     def delete(self, request, id):
         folder = Folder.objects.get(id=id)

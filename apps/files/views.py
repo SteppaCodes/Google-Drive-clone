@@ -41,7 +41,7 @@ class FileUpdateDestroyView(APIView):
     def put(self, request, id):
         file = File.objects.get(id=id)
         serializer = self.serializer_class(file, data=request.data, context={"request":request})
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid()
         serializer.save()
         return Response({"Success":"file update succesflly",
                         "data":serializer.data})

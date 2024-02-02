@@ -14,5 +14,3 @@ class File(BaseModel):
 
     def __str__(self):
         return self.file.name
-
-# File.starred_items = GenericRelation(StarredItem, related_query_name='file_starred_items')
