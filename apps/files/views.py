@@ -16,6 +16,7 @@ class FileListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        print(request.scheme, "scheme")
         user = request.user
         files = File.objects.filter(owner=user)
        

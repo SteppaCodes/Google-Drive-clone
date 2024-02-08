@@ -1,6 +1,8 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext_lazy as _
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -54,7 +56,7 @@ class UnstarItemAPIView(APIView):
         
         if starred_item.exists():
             starred_item.delete()
-            return Response({"success":"item unstarred", 'data':serialzer.data})
+            return Response({"success":"item unstarred", 'data':serializer.data})
         
         else:
             return Response({"error":"you cannot unstar an item that has not been starred"})
@@ -70,11 +72,34 @@ class StarredItemsListAPIView(APIView):
             return Response({"data":serializer.data})
         else:
             return Response(_("You do not have any starred item"))
-        
+
 
 class CreateShareLink(APIView):
     def post(self, request, id):
-        try:
-            file_obj = File.objects.get(id=id)
-        except:
-            pass
+        obj = get_item(self, id, request)
+        item = obj[0]
+
+        #Build the link
+        site = get_current_site(request).domain
+        id = item.id
+        item_type = item._meta.model.__name__
+        type  = ''
+
+        if item_type == 'File':
+            type = 'files'
+        else:
+            type = 'folders'
+
+        url = reverse('get-shared-item', args=[type, id])
+        link = f"{request.scheme}://{site}{url}"
+
+        return Response({"link":link})
+
+
+class GetSharedItem(APIView):
+    def get(self, request, id, type):
+        obj = get_item(self, id, request)
+        serializer = obj[1]
+
+        return Response({"data":serializer.data})
+
