@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 
-from .models import File
+from .models import File, Comment
 from apps.common.models import StarredItem
 
 class FileSerializer(serializers.ModelSerializer):
@@ -50,3 +50,31 @@ class FileSerializer(serializers.ModelSerializer):
             except StarredItem.DoesNotExist:
                 return False
         return False
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = [
+            'id',
+            'owner',
+            'comment',
+            'file',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id','created_at','updated_at', 'owner']
+
+
+class FileWithCommentsSerialzer(serializers.ModelSerializer):
+    comments = CommentSerializer(many=True)
+    
+    class Meta:
+        model = File
+        fields = [
+            'name',
+            'owner',
+            'comments',
+
+        ]
+        read_only_fields = ['id','created_at','updated_at', 'comments', 'owner']

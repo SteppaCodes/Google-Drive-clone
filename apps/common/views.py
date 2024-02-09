@@ -17,24 +17,40 @@ from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
 
 
-def get_item(self, id, request):
-    try:
-        item = File.objects.get(id=id)
-        serializer = FileSerializer(item, context={'request':request})
-        return item, serializer
-    except ObjectDoesNotExist:
+class Finder:
+    @staticmethod
+    def get_item_with_id(self, request, id):
         try:
-            item = Folder.objects.get(id=id)
-            serializer = FolderSerializer(item, context={'request':request})
+            item = File.objects.get(id=id)
+            serializer = FileSerializer(item, context={'request':request})
             return item, serializer
         except ObjectDoesNotExist:
-            return Response({"error":"item does not exist"})
+            try:
+                item = Folder.objects.get(id=id)
+                serializer = FolderSerializer(item, context={'request':request})
+                return item, serializer
+            except ObjectDoesNotExist:
+                return Response({"error":"item does not exist"})
+    
+    @staticmethod
+    def get_item_with_name(self, request, name):
+        try:
+            item = File.objects.get(name=name)
+            serializer = FileSerializer(item, context={'request':request})
+            return item, serializer
+        except ObjectDoesNotExist:
+            try:
+                item = Folder.objects.get(name=name)
+                serializer = FolderSerializer(item, context={'request':request})
+                return item, serializer
+            except ObjectDoesNotExist:
+                return Response({"error":"item does not exist"})
 
 
 class StarItemAPIView(APIView):
     def post(self, request, id):
         #Get the item to be starred, if its a folder or file
-        obj = get_item(self, id, request)
+        obj = Finder.get_item_with_id(self, request, id)
         #get the returnd item and serialzer rfo the get_item function
         item , serializer = obj[0],obj[1]
 
@@ -48,7 +64,7 @@ class StarItemAPIView(APIView):
 class UnstarItemAPIView(APIView):
     def delete(self, request, id):
        #Get the item to be starred, if its a folder or file
-        obj = get_item(self,id, request)
+        obj = Finder.get_item_with_id(self, request, id)
         item , serializer = obj[0],obj[1]
 
         starred_item = StarredItem.objects.filter(user=request.user, 
@@ -76,7 +92,7 @@ class StarredItemsListAPIView(APIView):
 
 class CreateShareLink(APIView):
     def post(self, request, id):
-        obj = get_item(self, id, request)
+        obj = Finder.get_item_with_id(self, id, request)
         item = obj[0]
 
         #Build the link
@@ -98,8 +114,7 @@ class CreateShareLink(APIView):
 
 class GetSharedItem(APIView):
     def get(self, request, id, type):
-        obj = get_item(self, id, request)
+        obj = Finder.get_item_with_id(self, request, id)
         serializer = obj[1]
 
         return Response({"data":serializer.data})
-
