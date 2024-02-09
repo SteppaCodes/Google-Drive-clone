@@ -11,9 +11,9 @@ a list of  features that this clone has.
 - Folders for file organization
 - Share files to other users
 - View Shared Files
+- File Commenting
 
 #Features to be built
 - Search for specific file in the drive
 - Notifications
 - File preview 
-- File Commenting
