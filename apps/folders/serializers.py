@@ -32,19 +32,4 @@ class FolderSerializer(serializers.ModelSerializer):
             except StarredItem.DoesNotExist:
                 return False
         return False
-        
-
-
-class FolderWIthFilesSerializer(serializers.ModelSerializer):
-    files = FileSerializer(many=True)
-    subfolders = FolderSerializer(many=True)
-
-    class Meta:
-        model = Folder
-        fields = [
-            'id', 'name', 'files', 'subfolders'
-        ]
-        
-        read_only_fields = ['id', 'starred', 'files', 'subfolders']
-
 

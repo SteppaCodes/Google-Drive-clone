@@ -13,10 +13,10 @@ a list of  features that this clone has.
 - View Shared Files
 - File Commenting
 - Search whole drive
+- Search for folder in drive
+- Folder content search
 
 # Features to be built
-- Search for specific file in the drive
-- Search for folder in drive
 - Shared file status with multiple users access
 - Notifications
 - File preview 
