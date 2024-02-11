@@ -1,7 +1,7 @@
 # Google Drive Clone
 Google Drive clone built with django rest framework
 
-#Features
+# Features
 a list of  features that this clone has.
 
 - User Registration and Login
@@ -14,7 +14,7 @@ a list of  features that this clone has.
 - File Commenting
 - Search whole drive
 
-#Features to be built
+# Features to be built
 - Search for specific file in the drive
 - Search for folder in drive
 - Shared file status with multiple users access
