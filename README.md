@@ -2,7 +2,7 @@
 Google Drive clone built with django rest framework
 
 # Features
-a list of  features that this clone has.
+A list of  features that this clone has.
 
 - User Registration and Login
 - File Upload
