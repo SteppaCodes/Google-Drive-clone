@@ -17,7 +17,11 @@ class FolderListCreateAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        folders =  Folder.objects.filter(owner=user)
+        query = request.GET.get("query")
+        if query == None:
+            query = ''
+
+        folders =  Folder.objects.filter(owner=user, name__icontains=query)
         if folders:
             serializer = self.serializer_class(folders, many=True, context={"request":request})
             return Response({"data":serializer.data})
@@ -27,7 +31,7 @@ class FolderListCreateAPIView(APIView):
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={"request":request})
-        serializer.is_valid(raise_exceptions=True)
+        serializer.is_valid(raise_exception=True)
 
         user = request.user
         serializer.save(owner=user)

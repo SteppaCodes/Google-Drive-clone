@@ -18,7 +18,11 @@ class FileListCreateView(APIView):
 
     def get(self, request):
         user = request.user
-        files = File.objects.filter(owner=user)
+        query = request.GET.get("query")
+        if query == None:
+            query = ''
+
+        files = File.objects.filter(owner=user, name__icontains=query)
 
         if files:
             serializer = self.serializer_class(
