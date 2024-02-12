@@ -3,13 +3,22 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .serializers import RegisterUserSerializer, LoginUserSerializer
 
+tags = ["Auth"]
 
 class RegisteruserView(APIView):
     serializer_class = RegisterUserSerializer
 
+    @extend_schema(
+        summary="Register User",
+        description="""
+            This endpoint registers a new user.
+        """,
+        tags=tags,
+    )
     def post(self, request):
 
         serializer = self.serializer_class(data=request.data)
@@ -21,6 +30,13 @@ class RegisteruserView(APIView):
 class LoginUserView(APIView):
     serializer_class = LoginUserSerializer
 
+    @extend_schema(
+        summary="Login User",
+        description="""
+            This endpoint authenticates a new user.
+        """,
+        tags=tags,
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)

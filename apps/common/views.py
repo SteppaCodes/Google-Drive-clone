@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import StarredItem
 from .serializers import StarredItemsSerielizer
@@ -16,6 +17,8 @@ from apps.files.models import File
 from apps.folders.models import Folder
 from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
+
+tags = ["Common Functionalities"]
 
 
 class Finder:
@@ -35,19 +38,26 @@ class Finder:
 
     @staticmethod
     def Search_item(self, request, query):
-        
+
         try:
             files = File.objects.filter(name__icontains=query, owner=request.user)
             folders = Folder.objects.filter(name__icontains=query, owner=request.user)
 
             return files, folders
         except ObjectDoesNotExist:
-            return Response({"error":"404 Not Found"})
+            return Response({"error": "404 Not Found"})
 
 
 class StarItemAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Star an item",
+        description="""
+            This endpoint stars a file or folder.
+        """,
+        tags=tags,
+    )
     def post(self, request, id):
         # Get the item to be starred, if its a folder or file
         obj = Finder.get_item_with_id(self, request, id)
@@ -73,6 +83,20 @@ class StarItemAPIView(APIView):
 class UnstarItemAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Unstar an item",
+        description="""
+            This endpoint unstars a file or folder.
+        """,
+        tags=tags,
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                description="Retrieve a folder using its id",
+                required=True,
+            )
+        ],
+    )
     def delete(self, request, id):
         # Get the item to be starred, if its a folder or file
         obj = Finder.get_item_with_id(self, request, id)
@@ -98,6 +122,13 @@ class StarredItemsListAPIView(APIView):
     serializer_class = StarredItemsSerielizer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Retreive starred files and folders",
+        description="""
+            This endpoint retreives all starred folders and files".
+        """,
+        tags=tags,
+    )
     def get(self, request):
         starred_items = StarredItem.objects.filter(user=request.user)
         if starred_items:
@@ -110,6 +141,13 @@ class StarredItemsListAPIView(APIView):
 class CreateShareLink(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Share file or folder",
+        description="""
+            This endpoint creates a link to access file".
+        """,
+        tags=tags,
+    )
     def post(self, request, id):
         obj = Finder.get_item_with_id(self, id, request)
         item = obj[0]
@@ -134,6 +172,13 @@ class CreateShareLink(APIView):
 class GetSharedItem(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Access file",
+        description="""
+            This endpoint accesses file through link".
+        """,
+        tags=tags,
+    )
     def get(self, request, id, type):
         obj = Finder.get_item_with_id(self, request, id)
         serializer = obj[1]
@@ -144,6 +189,13 @@ class GetSharedItem(APIView):
 class SearchDrive(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Search drive",
+        description="""
+            This endpoint searches all files and folders in drive".
+        """,
+        tags=tags,
+    )
     def get(self, request):
         query = request.GET.get("query")
 
@@ -156,7 +208,6 @@ class SearchDrive(APIView):
         file_serializer = FileSerializer(files, many=True)
         folder_serializer = FolderSerializer(folders, many=True)
 
-        return Response({"data": {
-            "files": file_serializer.data, 
-            "folders":folder_serializer.data
-        }})
+        return Response(
+            {"data": {"files": file_serializer.data, "folders": folder_serializer.data}}
+        )

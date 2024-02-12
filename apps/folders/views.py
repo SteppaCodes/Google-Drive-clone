@@ -1,10 +1,12 @@
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ObjectDoesNotExist
+import uuid
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import Folder
 from .serializers import FolderSerializer
@@ -12,12 +14,23 @@ from apps.files.serializers import FileSerializer
 
 # TODO add response statuses
 
+tags = ["Folders"]
+
+
 class FolderListCreateAPIView(APIView):
     serializer_class = FolderSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Retrieve folders",
+        description="""
+            This endpoint retrieves all folders a user has access to.
+        """,
+        tags=tags,
+    )
     def get(self, request):
         user = request.user
+
         query = request.GET.get("query")
         if query == None:
             query = ""
@@ -31,14 +44,19 @@ class FolderListCreateAPIView(APIView):
         else:
             return Response(_("You do not have any folders"))
 
+    @extend_schema(
+        summary="Create folder",
+        description="""
+            This endpoint creates a new folder.
+        """,
+        tags=tags,
+    )
     def post(self, request):
         serializer = self.serializer_class(
             data=request.data, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
-
-        user = request.user
-        serializer.save(owner=user)
+        serializer.save(owner=request.user)
 
         return Response({"success": "Folder created", "data": serializer.data})
 
@@ -47,9 +65,17 @@ class FolderDetailAPIView(APIView):
     serializer_class = FolderSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Retrieve specific folder",
+        description="""
+            This endpoint retrieves contents of a folder (files and folders).
+        """,
+        tags=tags,
+    )
     def get(self, request, id):
         try:
             query = request.GET.get("query")
+
             if query == None:
                 query = ""
 
@@ -60,7 +86,6 @@ class FolderDetailAPIView(APIView):
             files = folder.files.filter(name__icontains=query)
             flle_serializer = FileSerializer(files, many=True)
 
-            # Get the files and filter them based on the query
             sub_folders = folder.subfolders.filter(name__icontains=query)
             sub_folder_serializer = FolderSerializer(sub_folders, many=True)
 
@@ -77,6 +102,13 @@ class FolderDetailAPIView(APIView):
         except ObjectDoesNotExist:
             return Response(_("This folder does not exist"))
 
+    @extend_schema(
+        summary="Update folders",
+        description="""
+            This endpoint updates folder information.
+        """,
+        tags=tags,
+    )
     def put(self, request, id):
         folder = Folder.objects.get(id=id)
         serializer = self.serializer_class(
@@ -89,12 +121,17 @@ class FolderDetailAPIView(APIView):
             return Response(
                 {"success": "Folder updated successfully", "data": serializer.data}
             )
-
         return Response(serializer.errors)
 
+    @extend_schema(
+        summary="Delete folders",
+        description="""
+            This endpoint deletes a folder.
+        """,
+        tags=tags,
+    )
     def delete(self, request, id):
         folder = Folder.objects.get(id=id)
         if folder.owner == request.user:
             folder.delete()
             return Response({"success": "folder deleted successfully"})
-
