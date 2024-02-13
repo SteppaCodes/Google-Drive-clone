@@ -11,21 +11,24 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from .models import StarredItem
-from .serializers import StarredItemsSerielizer
+from .models import StarredItem, SharedItem
+from .serializers import StarredItemsSerielizer, UserSharedItemsSerializer
 from apps.files.models import File
 from apps.folders.models import Folder
 from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
+from apps.accounts.models import User
+from apps.accounts.serializers import UserSerializer
 
 tags = ["Common Functionalities"]
 
 
 class Finder:
     @staticmethod
-    def get_item_with_id(self, request, id):
+    def get_item_with_id(request, id):
         try:
             item = File.objects.get(id=id)
+            print(item)
             serializer = FileSerializer(item, context={"request": request})
             return item, serializer
         except ObjectDoesNotExist:
@@ -37,7 +40,7 @@ class Finder:
                 return Response({"error": "item does not exist"})
 
     @staticmethod
-    def Search_item(self, request, query):
+    def Search_item(request, query):
 
         try:
             files = File.objects.filter(name__icontains=query, owner=request.user)
@@ -60,7 +63,7 @@ class StarItemAPIView(APIView):
     )
     def post(self, request, id):
         # Get the item to be starred, if its a folder or file
-        obj = Finder.get_item_with_id(self, request, id)
+        obj = Finder.get_item_with_id(request, id)
         # get the returnd item and serialzer rfo the get_item function
         item, serializer = obj[0], obj[1]
 
@@ -99,7 +102,7 @@ class UnstarItemAPIView(APIView):
     )
     def delete(self, request, id):
         # Get the item to be starred, if its a folder or file
-        obj = Finder.get_item_with_id(self, request, id)
+        obj = Finder.get_item_with_id(request, id)
         item, serializer = obj[0], obj[1]
 
         starred_item = StarredItem.objects.filter(
@@ -138,7 +141,7 @@ class StarredItemsListAPIView(APIView):
             return Response(_("You do not have any starred item"))
 
 
-class CreateShareLink(APIView):
+class CreateShareLinkAPIview(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -149,7 +152,7 @@ class CreateShareLink(APIView):
         tags=tags,
     )
     def post(self, request, id):
-        obj = Finder.get_item_with_id(self, id, request)
+        obj = Finder.get_item_with_id(request, id)
         item = obj[0]
 
         # Build the link
@@ -169,24 +172,88 @@ class CreateShareLink(APIView):
         return Response({"link": link})
 
 
-class GetSharedItem(APIView):
+class GetSharedItemAPIview(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="Access file",
+        summary="Access file or folder",
         description="""
-            This endpoint accesses file through link".
+            This endpoint accesses file/folder through link".
         """,
         tags=tags,
     )
-    def get(self, request, id, type):
-        obj = Finder.get_item_with_id(self, request, id)
-        serializer = obj[1]
+    def get(self, request, type, id):
+        obj = Finder.get_item_with_id(request, id)
+        item, serializer = obj[0], obj[1]
+
+        """
+            get or create a shared item object under the hood
+            if the item exists, add the user making the request to-
+            -the list of users with access to the file
+        """
+
+        try:
+            shared_item, created = SharedItem.objects.get_or_create(
+                owner=request.user,
+                content_type=ContentType.objects.get_for_model(item),
+                object_id=id,
+            )
+            if not created:
+                users = shared_item.users
+                #exclude the file owner from the list
+                if shared_item.owner != request.user:
+                    users.add(request.user)
+        except Exception as e:
+            return Response({"error": e})
 
         return Response({"data": serializer.data})
 
 
-class SearchDrive(APIView):
+class UserSharedItemsListCreateAPIview(APIView):
+    serializer_class = UserSharedItemsSerializer
+
+    @extend_schema(
+        summary="Get shared files or folders for a user",
+        description="""
+            This endpoint returns all user's shared files or folders".
+        """,
+        tags=tags,
+    )
+    def get(self, request):
+
+        user = User.objects.prefetch_related("shared_items", "collab_items").get(
+            id=request.user.id
+        )
+
+        shared_items = user.shared_items.all()
+        collab_items = user.collab_items.all()
+
+        shared_items_serializer = self.serializer_class(shared_items, many=True)
+        collab_items_serializer = self.serializer_class(collab_items, many=True)
+
+        data = {
+            "shared_items": shared_items_serializer.data,
+            "collab_items": collab_items_serializer.data,
+        }
+
+        return Response({"data": data})
+
+    
+class SharedItemDetailAPIView(APIView):
+    serializer_class = UserSharedItemsSerializer
+
+    def get(self, request, id):
+        try:
+            shared_item = SharedItem.objects.get(id=id)
+            serializer = self.serializer_class(
+                shared_item, context={"request": request}
+            )
+            return Response({"data": serializer.data})
+        except ObjectDoesNotExist:
+            return Response({"error": "item does not exist"})
+
+
+class SearchDriveAPIview(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -202,7 +269,7 @@ class SearchDrive(APIView):
         if query == None:
             query = ""
 
-        obj = Finder.Search_item(self, request, query)
+        obj = Finder.Search_item(request, query)
         files, folders = obj[0], obj[1]
 
         file_serializer = FileSerializer(files, many=True)
