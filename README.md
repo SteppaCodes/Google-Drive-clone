@@ -18,6 +18,6 @@ A list of  features that this clone has.
 - Shared file status with multiple users access
 
 # Features to be built
-
 - Notifications
-- File preview 
+- User Logout
+- Google autentication 
