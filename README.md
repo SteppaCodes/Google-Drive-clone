@@ -15,8 +15,9 @@ A list of  features that this clone has.
 - Search whole drive
 - Search for folder in drive
 - Folder content search
+- Shared file status with multiple users access
 
 # Features to be built
-- Shared file status with multiple users access
+
 - Notifications
 - File preview 

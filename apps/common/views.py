@@ -28,7 +28,6 @@ class Finder:
     def get_item_with_id(request, id):
         try:
             item = File.objects.get(id=id)
-            print(item)
             serializer = FileSerializer(item, context={"request": request})
             return item, serializer
         except ObjectDoesNotExist:
@@ -37,7 +36,7 @@ class Finder:
                 serializer = FolderSerializer(item, context={"request": request})
                 return item, serializer
             except ObjectDoesNotExist:
-                return Response({"error": "item does not exist"})
+                return None, None
 
     @staticmethod
     def Search_item(request, query):
@@ -45,10 +44,9 @@ class Finder:
         try:
             files = File.objects.filter(name__icontains=query, owner=request.user)
             folders = Folder.objects.filter(name__icontains=query, owner=request.user)
-
             return files, folders
         except ObjectDoesNotExist:
-            return Response({"error": "404 Not Found"})
+            return None, None
 
 
 class StarItemAPIView(APIView):
@@ -62,10 +60,13 @@ class StarItemAPIView(APIView):
         tags=tags,
     )
     def post(self, request, id):
-        # Get the item to be starred, if its a folder or file
-        obj = Finder.get_item_with_id(request, id)
-        # get the returnd item and serialzer rfo the get_item function
-        item, serializer = obj[0], obj[1]
+        item, serializer = Finder.get_item_with_id(request, id)
+
+        if item is None:
+            return Response(
+                {"error": "Item not found",},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         starred_item, created = StarredItem.objects.get_or_create(
             user=request.user,
@@ -101,9 +102,14 @@ class UnstarItemAPIView(APIView):
         ],
     )
     def delete(self, request, id):
-        # Get the item to be starred, if its a folder or file
-        obj = Finder.get_item_with_id(request, id)
-        item, serializer = obj[0], obj[1]
+        item, serializer = Finder.get_item_with_id(request, id)
+
+        if item is None:
+            return Response(
+                {"error": "Not found",},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
 
         starred_item = StarredItem.objects.filter(
             user=request.user,
@@ -117,7 +123,7 @@ class UnstarItemAPIView(APIView):
 
         else:
             return Response(
-                {"error": "you cannot unstar an item that has not been starred"}
+                {"error": "Item not starred"}
             )
 
 
@@ -152,8 +158,14 @@ class CreateShareLinkAPIview(APIView):
         tags=tags,
     )
     def post(self, request, id):
-        obj = Finder.get_item_with_id(request, id)
-        item = obj[0]
+        item, serializer = Finder.get_item_with_id(request, id)
+
+        if item is None:
+            return Response(
+                {"error": "Item not found",},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
 
         # Build the link
         site = get_current_site(request).domain
@@ -183,8 +195,14 @@ class GetSharedItemAPIview(APIView):
         tags=tags,
     )
     def get(self, request, type, id):
-        obj = Finder.get_item_with_id(request, id)
-        item, serializer = obj[0], obj[1]
+        item, serializer = Finder.get_item_with_id(request, id)
+
+        if item is None:
+            return Response(
+                {"error": "Item not found",},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
 
         """
             get or create a shared item object under the hood
@@ -221,7 +239,7 @@ class UserSharedItemsListCreateAPIview(APIView):
     )
     def get(self, request):
 
-        user = User.objects.prefetch_related("shared_items", "collab_items").get(
+        user = User.objects.get(
             id=request.user.id
         )
 
