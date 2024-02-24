@@ -13,7 +13,7 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 
 tags = ["Files"]
-comment_tag = ["file_comments"]
+comment_tag = ["Comments"]
 
 
 class FileListCreateView(APIView):
@@ -176,7 +176,7 @@ class GetFileComments(APIView):
     
 
     @extend_schema(
-        summary="Deletecomment",
+        summary="Delete comment",
         description="""
             This endpoint deletes a comment from file.
         """,
@@ -188,5 +188,5 @@ class GetFileComments(APIView):
             comment.delete()
             return Response({"success": "comment deleted succesfully"})
         return Response(
-            {"eroor": "you do not have the permission to delete this comment"}
+            {"error": "you do not have the permission to delete this comment"}
         )

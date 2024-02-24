@@ -19,7 +19,12 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PARTY_APPS = ["rest_framework", "rest_framework_simplejwt", "drf_spectacular"]
+THIRD_PARTY_APPS = [
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "drf_spectacular",
+    "rest_framework_simplejwt.token_blacklist",
+]
 
 LOCAL_APPS = [
     "apps.accounts",
@@ -134,10 +139,20 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "GOOGLE DRIVE CLONE API",
     "DESCRIPTION": "A google drive clone built with django rest framework",
-    "VERSION": '1.0.0',
+    "VERSION": "1.0.0",
     "SECURITY": [
         {
             "bearerAuth": [],
         }
+    ],
+    "TAGS": [
+        {"name": "Auth", "description": "Authentication endpoints"},
+        {"name": "Files", "description": "CRUD and manageFiles endpoints"},
+        {"name": "Comments", "description": "File comments CRUD endpoints"},
+        {"name": "Folders", "description": "CRUD folders endpoints"},
+        {
+            "name": "Common Functionalities",
+            "description": "Commonn features for files and folders",
+        },
     ],
 }
