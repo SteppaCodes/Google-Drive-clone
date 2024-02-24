@@ -6,20 +6,21 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import Folder
 from .serializers import FolderSerializer
 from apps.files.serializers import FileSerializer
 
-# TODO add response statuses
 
 tags = ["Folders"]
 
 
-class FolderListCreateAPIView(APIView):
+class FolderListCreateAPIView(APIView, PageNumberPagination):
     serializer_class = FolderSerializer
     permission_classes = [IsAuthenticated]
+    page_size = 5
 
     @extend_schema(
         summary="Retrieve folders",
@@ -27,6 +28,20 @@ class FolderListCreateAPIView(APIView):
             This endpoint retrieves all folders a user has access to.
         """,
         tags=tags,
+        parameters=[
+            OpenApiParameter(
+                name="query",
+                type=str,
+                required=False,
+                description="Folder name to search for"
+            ),
+            OpenApiParameter(
+                name="page",
+                type=int,
+                required=False,
+                description="Page number"
+            )
+        ]
     )
     def get(self, request):
         user = request.user
@@ -37,10 +52,11 @@ class FolderListCreateAPIView(APIView):
 
         folders = Folder.objects.filter(owner=user, name__icontains=query)
         if folders:
+            paginated_qs = self.paginate_queryset(folders, request, view=self)
             serializer = self.serializer_class(
-                folders, many=True, context={"request": request}
+                paginated_qs, many=True, context={"request": request}
             )
-            return Response({"data": serializer.data})
+            return self.get_paginated_response({"data": serializer.data})
         else:
             return Response(_("You do not have any folders"))
 
@@ -71,6 +87,14 @@ class FolderDetailAPIView(APIView):
             This endpoint retrieves contents of a folder (files and folders).
         """,
         tags=tags,
+        parameters=[
+            OpenApiParameter(
+                name="query",
+                type=str,
+                required=False,
+                description="Folder or file name to search for"
+            )
+        ]
     )
     def get(self, request, id):
         try:

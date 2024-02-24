@@ -2,10 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema
+from rest_framework.pagination import PageNumberPagination
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import File, Comment
-from .serializers import FileSerializer, CommentSerializer, FileWithCommentsSerialzer
+from .serializers import (FileSerializer, CommentSerializer, FileWithCommentsSerialzer)
 from utils.permissions import ISOwner
 
 from django.utils.translation import gettext_lazy as _
@@ -16,9 +17,10 @@ tags = ["Files"]
 comment_tag = ["Comments"]
 
 
-class FileListCreateView(APIView):
+class FileListCreateView(APIView, PageNumberPagination):
     serializer_class = FileSerializer
     permission_classes = [IsAuthenticated]
+    page_size = 5
 
     @extend_schema(
         summary="Get files",
@@ -26,7 +28,22 @@ class FileListCreateView(APIView):
             This endpoint retreives all user's files.
         """,
         tags=tags,
+        parameters=[
+            OpenApiParameter(
+                name="query",
+                type=str,
+                required=False,
+                description="Folder name to search for"
+            ),
+            OpenApiParameter(
+                name="page",
+                type=int,
+                required=False,
+                description="Page number"
+            )
+        ]
     )
+        
     def get(self, request):
         user = request.user
         query = request.GET.get("query")
@@ -36,10 +53,11 @@ class FileListCreateView(APIView):
         files = File.objects.filter(owner=user, name__icontains=query)
 
         if files:
+            paginated_qs = self.paginate_queryset(files, request, view=self)
             serializer = self.serializer_class(
-                files, many=True, context={"request": request}
+                paginated_qs, many=True, context={"request": request}
             )
-            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+            return self.get_paginated_response({"data": serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response(_("You do not have any files"))
 
