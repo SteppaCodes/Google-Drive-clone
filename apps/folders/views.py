@@ -156,6 +156,10 @@ class FolderDetailAPIView(APIView):
     )
     def delete(self, request, id):
         folder = Folder.objects.get(id=id)
-        if folder.owner == request.user:
+        if folder and folder.owner == request.user:
             folder.delete()
             return Response({"success": "folder deleted successfully"})
+        if not folder:
+            return Response({"error": "folder not found"})
+        else:
+            return Response({"error":"Yo cannot delete this folder"})

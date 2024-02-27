@@ -6,7 +6,7 @@ from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import File, Comment
-from .serializers import (FileSerializer, CommentSerializer, FileWithCommentsSerialzer)
+from .serializers import FileSerializer, CommentSerializer, FileWithCommentsSerialzer
 from utils.permissions import ISOwner
 
 from django.utils.translation import gettext_lazy as _
@@ -33,17 +33,13 @@ class FileListCreateView(APIView, PageNumberPagination):
                 name="query",
                 type=str,
                 required=False,
-                description="Folder name to search for"
+                description="Folder name to search for",
             ),
             OpenApiParameter(
-                name="page",
-                type=int,
-                required=False,
-                description="Page number"
-            )
-        ]
+                name="page", type=int, required=False, description="Page number"
+            ),
+        ],
     )
-        
     def get(self, request):
         user = request.user
         query = request.GET.get("query")
@@ -57,7 +53,9 @@ class FileListCreateView(APIView, PageNumberPagination):
             serializer = self.serializer_class(
                 paginated_qs, many=True, context={"request": request}
             )
-            return self.get_paginated_response({"data": serializer.data}, status=status.HTTP_200_OK)
+            return self.get_paginated_response(
+                {"data": serializer.data}, status=status.HTTP_200_OK
+            )
         else:
             return Response(_("You do not have any files"))
 
@@ -68,7 +66,6 @@ class FileListCreateView(APIView, PageNumberPagination):
         """,
         tags=tags,
     )
-
     def post(self, request):
         serializer = self.serializer_class(
             data=request.data, context={"request": request}
@@ -109,9 +106,12 @@ class FileUpdateDestroyView(APIView):
     )
     def delete(self, request, id):
         file = File.objects.get(id=id)
-        file.delete()
+        if file:
+            file.delete()
 
-        return Response({"success": "file deleted succesfully"})
+            return Response({"success": "file deleted succesfully"})
+        else:
+            return Response({"error": "File not found"})
 
 
 class DownloadFileAPIView(APIView):
@@ -191,7 +191,6 @@ class GetFileComments(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"data": serializer.data})
-    
 
     @extend_schema(
         summary="Delete comment",
