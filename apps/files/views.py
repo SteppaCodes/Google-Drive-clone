@@ -13,9 +13,7 @@ from django.utils.translation import gettext_lazy as _
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 
-tags = ["Files"]
-comment_tag = ["Comments"]
-
+tags = [["Files"], ["Comments"]]
 
 class FileListCreateView(APIView, PageNumberPagination):
     serializer_class = FileSerializer
@@ -27,7 +25,7 @@ class FileListCreateView(APIView, PageNumberPagination):
         description="""
             This endpoint retreives all user's files.
         """,
-        tags=tags,
+        tags=tags[0],
         parameters=[
             OpenApiParameter(
                 name="query",
@@ -64,7 +62,7 @@ class FileListCreateView(APIView, PageNumberPagination):
         description="""
             This endpoint uploads files.
         """,
-        tags=tags,
+        tags=tags[0],
     )
     def post(self, request):
         serializer = self.serializer_class(
@@ -102,7 +100,7 @@ class FileUpdateDestroyView(APIView):
         description="""
             This endpoint deletes files.
         """,
-        tags=tags,
+        tags=tags[0],
     )
     def delete(self, request, id):
         file = File.objects.get(id=id)
@@ -148,7 +146,7 @@ class CommentOnFile(APIView):
         description="""
             This endpoint add comment to files.
         """,
-        tags=comment_tag,
+        tags=tags[1],
     )
     def post(self, request, id):
         owner = request.user
@@ -170,7 +168,7 @@ class GetFileComments(APIView):
         description="""
             This endpoint retreives all file's comments.
         """,
-        tags=comment_tag,
+        tags=tags[1],
     )
     def get(self, request, id):
         file = File.objects.prefetch_related("comments").get(id=id)
@@ -183,7 +181,7 @@ class GetFileComments(APIView):
         description="""
             This endpoint updates file's comment.
         """,
-        tags=comment_tag,
+        tags=tags[1],
     )
     def put(self, request, id):
         comment = Comment.objects.get(id=id)
@@ -197,7 +195,7 @@ class GetFileComments(APIView):
         description="""
             This endpoint deletes a comment from file.
         """,
-        tags=comment_tag,
+        tags=tags[1],
     )
     def delete(self, request, id):
         comment = Comment.objects.get(id=id)
