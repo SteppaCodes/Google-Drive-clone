@@ -20,4 +20,41 @@ A list of  features that this clone has.
 # Features to be built
 - Notifications
 - User Logout
-- Google autentication 
+- Google authentication 
+
+# Installation Guide
+
+- Download or clone this repostory using
+  ```sh
+  git@github.com:SteppaCodes/Google-Drive-clone.git
+- Navigate into your project directory
+  ```sh
+  cd google_drive_clone
+- Create a virtual environment
+  ```sh
+  python -m venv env
+- Activate the virtual environment
+- On Windows:
+  ```sh
+  env\scripts\activate
+- On Macos:
+  ```sh 
+  source env/bin/activate
+- Install dependencies
+  ```sh
+  pip install -r requirements.txt
+- Run migrations to setup initial database schema
+  ```sh
+  python manage.py migrate
+- Create super user(optional)
+  ```sh
+  python manage.py createsuperuser
+- Run the development server
+  ```sh
+  python manage.py runserver
+- Access the API: on your browser, navigate to
+   ``` sh
+    http://127.0.0.1:8000/api/
+
+# Authentication 
+Token-based authentication is used to secure the API endpoints. To access protected endpoints, include the token in the request headers
