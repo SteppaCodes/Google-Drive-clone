@@ -21,7 +21,7 @@ urlpatterns = [
         name="create-share-link",
     ),
     path(
-        "get-shared-item/<type>/<id>",
+        "get-shared-item/<type>/<idb64>",
         GetSharedItemAPIview.as_view(),
         name="get-shared-item",
     ),

@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.db.models import Q
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -25,7 +27,10 @@ tags = ["Common Functionalities"]
 
 class Finder:
     @staticmethod
-    def get_item_with_id(request, id):
+    def get_item_with_id(request, id=None, idb64=None):
+        if idb64:
+            id = force_str(urlsafe_base64_decode(idb64))
+            print(id)
         try:
             item = File.objects.get(id=id)
             serializer = FileSerializer(item, context={"request": request})
@@ -171,7 +176,7 @@ class CreateShareLinkAPIview(APIView):
 
         # Build the link
         site = get_current_site(request).domain
-        id = item.id
+        idb64 = urlsafe_base64_encode(force_bytes(item.id))
         item_type = item._meta.model.__name__
         type = ""
 
@@ -180,7 +185,7 @@ class CreateShareLinkAPIview(APIView):
         else:
             type = "folders"
 
-        url = reverse("get-shared-item", args=[type, id])
+        url = reverse("get-shared-item", args=[type, idb64])
         link = f"{request.scheme}://{site}{url}"
 
         return Response({"link": link})
@@ -196,8 +201,8 @@ class GetSharedItemAPIview(APIView):
         """,
         tags=tags,
     )
-    def get(self, request, type, id):
-        item, serializer = Finder.get_item_with_id(request, id)
+    def get(self, request, type, idb64):
+        item, serializer = Finder.get_item_with_id(request, idb64)
 
         if item is None:
             return Response(
@@ -221,7 +226,7 @@ class GetSharedItemAPIview(APIView):
             )
             if not created:
                 users = shared_item.users
-                # exclude the file owner from the list
+                # Exclude the file owner from the list
                 if shared_item.owner != request.user:
                     users.add(request.user)
         except Exception as e:

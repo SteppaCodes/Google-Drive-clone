@@ -23,6 +23,7 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
+    "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
 ]
 
@@ -37,7 +38,25 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 AUTH_USER_MODEL = "accounts.user"
 
+CORS_ALLOW_HEADERS = (
+    "x-requested-with",
+    "content-type",
+    "accept",
+    "origin",
+    "authorization",
+    "accept-encoding",
+    "access-control-allow-origin",
+    "content-disposition",
+)
+
+CORS_ALLOW_ALL_ORIGINS=True
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
