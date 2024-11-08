@@ -7,7 +7,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import File, Comment
 from .serializers import FileSerializer, CommentSerializer, FileWithCommentsSerialzer
-from utils.permissions import ISOwner
+from apps.common.permissions import ISOwner
+from apps.common.response import CustomResponse
 
 from django.utils.translation import gettext_lazy as _
 from django.http import FileResponse
@@ -16,10 +17,9 @@ from django.shortcuts import get_object_or_404
 
 tags = [["Files"], ["Comments"]]
 
-class FileListCreateView(APIView, PageNumberPagination):
+class FileListCreateView(APIView):
     serializer_class = FileSerializer
     permission_classes = [IsAuthenticated]
-    page_size = 5
 
     @extend_schema(
         summary="Get files",
@@ -34,9 +34,7 @@ class FileListCreateView(APIView, PageNumberPagination):
                 required=False,
                 description="Folder name to search for",
             ),
-            OpenApiParameter(
-                name="page", type=int, required=False, description="Page number"
-            ),
+            OpenApiParameter(name="page", type=int, required=False, description="Page number"),
         ],
     )
     def get(self, request):
@@ -47,16 +45,14 @@ class FileListCreateView(APIView, PageNumberPagination):
 
         files = File.objects.filter(owner=user, name__icontains=query)
 
-        if files:
-            paginated_qs = self.paginate_queryset(files, request, view=self)
-            serializer = self.serializer_class(
-                paginated_qs, many=True, context={"request": request}
-            )
-            return self.get_paginated_response(
-                {"data": serializer.data}, status=status.HTTP_200_OK
-            )
-        else:
-            return Response(_("You do not have any files"))
+        if not files:
+            return CustomResponse.success(self, message=_("You do not have any files"))
+
+        serializer = self.serializer_class(files, many=True, context={"request": request})
+        return CustomResponse.success( message=_("Files retreived successfully"), data=serializer.data, 
+                                      paginate=True, request=request, view=self)
+
+
 
     @extend_schema(
         summary="Upload file",
@@ -66,15 +62,12 @@ class FileListCreateView(APIView, PageNumberPagination):
         tags=tags[0],
     )
     def post(self, request):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request}
-        )
+        serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         user = request.user
         serializer.save(owner=user)
-        return Response({"data": serializer.data}, status=status.HTTP_201_CREATED)
-
+        return CustomResponse.success(message=_("File uploaded succesfully"), data=serializer.data, status_code=201)
 
 class FileUpdateDestroyView(APIView):
     serializer_class = FileSerializer
@@ -85,16 +78,18 @@ class FileUpdateDestroyView(APIView):
         description="""
             This endpoint updates files.
         """,
-        tags=tags,
+        tags=tags[0],
     )
     def put(self, request, id):
         file = File.objects.get(id=id)
-        serializer = self.serializer_class(
-            file, data=request.data, context={"request": request}
-        )
+
+        if not file:
+            return CustomResponse.error(message=_("File not found"), status_code=404)
+
+        serializer = self.serializer_class(file, data=request.data, context={"request": request})
         serializer.is_valid()
         serializer.save()
-        return Response({"Success": "file update succesflly", "data": serializer.data})
+        return CustomResponse.success(message=_("File updated successfully"))
 
     @extend_schema(
         summary="Delete files",
@@ -105,12 +100,12 @@ class FileUpdateDestroyView(APIView):
     )
     def delete(self, request, id):
         file = File.objects.get(id=id)
-        if file:
-            file.delete()
 
-            return Response({"success": "file deleted succesfully"})
-        else:
-            return Response({"error": "File not found"})
+        if not file:
+            return CustomResponse.error(message=_("File not found"), status_code=404)
+        
+        file.delete()
+        return CustomResponse.success(message=_("File deleted successfully"))
 
 
 class DownloadFileAPIView(APIView):
@@ -120,15 +115,13 @@ class DownloadFileAPIView(APIView):
         description="""
             This endpoint returns file for download.
         """,
-        tags=tags,
+        tags=tags[0],
     )
     def get(self, request, file_id):
         try:
             file = File.objects.get(id=file_id)
         except File.DoesNotExist:
-            return Response(
-                {"error": "File not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return CustomResponse.error(message=_("File not found"))
 
         file_path = file.file.path
 
@@ -143,9 +136,9 @@ class CommentOnFile(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="Comment on files",
+        summary="Comment on file",
         description="""
-            This endpoint add comment to files.
+            This endpoint add comment to a file.
         """,
         tags=tags[1],
     )
@@ -157,12 +150,12 @@ class CommentOnFile(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(file=file, owner=owner)
 
-        return Response({"data": serializer.data}, status=status.HTTP_201_CREATED)
+        return CustomResponse.success(message=_("Comment posted successfully"), data=serializer.data, status_code=201)
 
 
 class GetFileComments(APIView):
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated, ISOwner]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         summary="Get comments",
@@ -174,8 +167,12 @@ class GetFileComments(APIView):
     def get(self, request, id):
         file = File.objects.prefetch_related("comments").get(id=id)
 
+        if not file.comments:
+            return CustomResponse.success(message=_("File has no comments"))
+
         serializer = FileWithCommentsSerialzer(file)
-        return Response({"data": serializer.data})
+        return CustomResponse.success(message=_("Comments retreived successfully"), data=serializer.data, paginate=True, 
+                                      request=request, view=self)
 
     @extend_schema(
         summary="Update comment",
@@ -186,10 +183,14 @@ class GetFileComments(APIView):
     )
     def put(self, request, id):
         comment = Comment.objects.get(id=id)
+
+        if not comment:
+            return CustomResponse.error(message=_("Comment not found"), status_code=404)
+
         serializer = self.serializer_class(comment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"data": serializer.data})
+        return CustomResponse.success(message=_("Comment updated successfully"))
 
     @extend_schema(
         summary="Delete comment",

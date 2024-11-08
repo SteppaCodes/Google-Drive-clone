@@ -166,12 +166,12 @@ SPECTACULAR_SETTINGS = {
     ],
     "TAGS": [
         {"name": "Auth", "description": "Authentication endpoints"},
-        {"name": "Files", "description": "CRUD and manageFiles endpoints"},
+        {"name": "Files", "description": "Manage Files endpoints"},
+        {"name": "Folders", "description": "Manage Folders endpoints"},
         {"name": "Comments", "description": "File comments CRUD endpoints"},
-        {"name": "Folders", "description": "CRUD folders endpoints"},
         {
             "name": "Common Functionalities",
-            "description": "Commonn features for files and folders",
+            "description": "Common features for files and folders",
         },
     ],
 }

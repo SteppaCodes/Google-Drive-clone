@@ -1,26 +1,21 @@
 from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ObjectDoesNotExist
-import uuid
 
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import Folder
 from .serializers import FolderSerializer
 from apps.files.serializers import FileSerializer
+from apps.common.response import CustomResponse
 
 
 tags = ["Folders"]
 
 
-class FolderListCreateAPIView(APIView, PageNumberPagination):
+class FolderListCreateAPIView(APIView):
     serializer_class = FolderSerializer
     permission_classes = [IsAuthenticated]
-    page_size = 5
 
     @extend_schema(
         summary="Retrieve folders",
@@ -51,14 +46,13 @@ class FolderListCreateAPIView(APIView, PageNumberPagination):
             query = ""
 
         folders = Folder.objects.filter(owner=user, name__icontains=query)
-        if folders:
-            paginated_qs = self.paginate_queryset(folders, request, view=self)
-            serializer = self.serializer_class(
-                paginated_qs, many=True, context={"request": request}
-            )
-            return self.get_paginated_response({"data": serializer.data})
-        else:
-            return Response(_("You do not have any folders"))
+
+        if not folders:
+            return CustomResponse.success(message=_("You do not have any folders"))
+        
+        serializer = self.serializer_class(folders, many=True, context={"request": request})
+        return CustomResponse.success(message=_("Folders retreived successfully"), data=serializer.data, paginate=True, request=request, view=None)
+
 
     @extend_schema(
         summary="Create folder",
@@ -68,13 +62,11 @@ class FolderListCreateAPIView(APIView, PageNumberPagination):
         tags=tags,
     )
     def post(self, request):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request}
-        )
+        serializer = self.serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save(owner=request.user)
 
-        return Response({"success": "Folder created", "data": serializer.data})
+        return CustomResponse.success(message=_("Folder created successfully", data=serializer.data, status_code=201))
 
 
 class FolderDetailAPIView(APIView):
@@ -97,34 +89,29 @@ class FolderDetailAPIView(APIView):
         ]
     )
     def get(self, request, id):
-        try:
-            query = request.GET.get("query")
+        query= request.query_params if not None else ""
 
-            if query == None:
-                query = ""
+        folder = Folder.objects.prefetch_related("files", "subfolders").get(id=id)
+        if not folder:
+            return CustomResponse.error(message=_("Folder not found"), status_code=404)
 
-            folder = Folder.objects.prefetch_related("files", "subfolders").get(id=id)
-            serializer = self.serializer_class(folder)
+        serializer = self.serializer_class(folder)
 
-            # Get the files and filter them based on the query
-            files = folder.files.filter(name__icontains=query)
-            flle_serializer = FileSerializer(files, many=True)
+        # Get the files and filter them based on the query
+        files = folder.files.filter(name__icontains=query)
+        flle_serializer = FileSerializer(files, many=True)
 
-            sub_folders = folder.subfolders.filter(name__icontains=query)
-            sub_folder_serializer = FolderSerializer(sub_folders, many=True)
+        sub_folders = folder.subfolders.filter(name__icontains=query)
+        sub_folder_serializer = FolderSerializer(sub_folders, many=True)
 
-            return Response(
-                {
-                    "data": {
-                        "folder": serializer.data,
-                        "files": flle_serializer.data,
-                        "subfolders": sub_folder_serializer.data,
-                    }
-                },
-                status=status.HTTP_200_OK,
-            )
-        except ObjectDoesNotExist:
-            return Response(_("This folder does not exist"))
+        data = {
+            "folder": serializer.data,
+            "files": flle_serializer,
+            "folders": sub_folder_serializer.data
+        }
+        
+        return CustomResponse.success(message=_("Folder details retreived successfully"), data=data)
+
 
     @extend_schema(
         summary="Update folders",
@@ -135,17 +122,15 @@ class FolderDetailAPIView(APIView):
     )
     def put(self, request, id):
         folder = Folder.objects.get(id=id)
-        serializer = self.serializer_class(
-            folder, data=request.data, context={"request": request}
-        )
 
-        if serializer.is_valid():
-            serializer.save()
-
-            return Response(
-                {"success": "Folder updated successfully", "data": serializer.data}
-            )
-        return Response(serializer.errors)
+        if not folder:
+            return CustomResponse.error(message=_("Folder not found"), status_code=404)
+        
+        serializer = self.serializer_class(folder, data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        return CustomResponse.success(message=_("Folder detail updated successfully"), data=serializer.data)
 
     @extend_schema(
         summary="Delete folders",
@@ -156,10 +141,12 @@ class FolderDetailAPIView(APIView):
     )
     def delete(self, request, id):
         folder = Folder.objects.get(id=id)
-        if folder and folder.owner == request.user:
-            folder.delete()
-            return Response({"success": "folder deleted successfully"})
+
         if not folder:
-            return Response({"error": "folder not found"})
-        else:
-            return Response({"error":"Yo cannot delete this folder"})
+            return CustomResponse.error(message=_("Folder not found"), status_code=404)
+        
+        if folder.owner != request.user:
+            return CustomResponse.error(message=_("You cannot delete this folder"))
+        
+        folder.delete()
+        return CustomResponse.success(message=_("Folder deleted successfully"))

@@ -1,60 +1,22 @@
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext_lazy as _
-from django.contrib.sites.shortcuts import get_current_site
-from django.urls import reverse
-from django.db.models import Q
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
 
-from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import StarredItem, SharedItem
+from .response import CustomResponse
+from .mixins import AgentMixin
 from .serializers import StarredItemsSerielizer, UserSharedItemsSerializer
-from apps.files.models import File
-from apps.folders.models import Folder
 from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
 from apps.accounts.models import User
-from apps.accounts.serializers import UserSerializer
+
 
 tags = ["Common Functionalities"]
 
-
-class Finder:
-    @staticmethod
-    def get_item_with_id(request, id=None, idb64=None):
-        if idb64:
-            id = force_str(urlsafe_base64_decode(idb64))
-            print(id)
-        try:
-            item = File.objects.get(id=id)
-            serializer = FileSerializer(item, context={"request": request})
-            return item, serializer
-        except ObjectDoesNotExist:
-            try:
-                item = Folder.objects.get(id=id)
-                serializer = FolderSerializer(item, context={"request": request})
-                return item, serializer
-            except ObjectDoesNotExist:
-                return None, None
-
-    @staticmethod
-    def Search_item(request, query):
-
-        try:
-            files = File.objects.filter(name__icontains=query, owner=request.user)
-            folders = Folder.objects.filter(name__icontains=query, owner=request.user)
-            return files, folders
-        except ObjectDoesNotExist:
-            return None, None
-
-
-class StarItemAPIView(APIView):
+class StarItemAPIView(APIView, AgentMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -65,33 +27,26 @@ class StarItemAPIView(APIView):
         tags=tags,
     )
     def post(self, request, id):
-        item, serializer = Finder.get_item_with_id(request, id)
+        item = self.get_item_with_id(request, id)
 
-        if item is None:
-            return Response(
-                {
-                    "error": "Item not found",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if not item:
+            return CustomResponse.error(message=_("Item not found"), status_code=404)
+        
+        serializer = self.serialize(item)
 
         starred_item, created = StarredItem.objects.get_or_create(
             user=request.user,
             content_type=ContentType.objects.get_for_model(item),
             object_id=id,
         )
-        if created:
-            return Response(
-                {"success": "Item starred", "data": serializer.data},
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {"detail": "Item is already starred", "data": serializer.data},
-            status=status.HTTP_200_OK,
-        )
+
+        if not created:
+            return CustomResponse.error(message=_("Item already starred"))
+            
+        return CustomResponse.success(message=_("Item starred successfully"), data=serializer.data, status_code=201)
 
 
-class UnstarItemAPIView(APIView):
+class UnstarItemAPIView(APIView, AgentMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -109,15 +64,10 @@ class UnstarItemAPIView(APIView):
         ],
     )
     def delete(self, request, id):
-        item, serializer = Finder.get_item_with_id(request, id)
+        item = self.get_item_with_id(request, id)
 
-        if item is None:
-            return Response(
-                {
-                    "error": "Not found",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if not item:
+            return CustomResponse.error(message=_("Item not found"), status_code=404)
 
         starred_item = StarredItem.objects.filter(
             user=request.user,
@@ -125,12 +75,10 @@ class UnstarItemAPIView(APIView):
             object_id=id,
         )
 
-        if starred_item.exists():
-            starred_item.delete()
-            return Response({"success": "item unstarred", "data": serializer.data})
+        if not starred_item.exists9():
+            return CustomResponse.error(message=_("Item not found"), status_code=404)
 
-        else:
-            return Response({"error": "Item not starred"})
+        return CustomResponse.success(message=_("Item unstarred successfully"))
 
 
 class StarredItemsListAPIView(APIView):
@@ -146,14 +94,15 @@ class StarredItemsListAPIView(APIView):
     )
     def get(self, request):
         starred_items = StarredItem.objects.filter(user=request.user)
-        if starred_items:
-            serializer = self.serializer_class(starred_items, many=True)
-            return Response({"data": serializer.data})
-        else:
-            return Response(_("You do not have any starred item"))
+
+        if not starred_items:
+            return CustomResponse.success(message=_("You do not have any starred item"))
+
+        serializer = self.serializer_class(starred_items, many=True)
+        return CustomResponse.success(message=_("Successfully retreive starred items"), data=serializer.data)
 
 
-class CreateShareLinkAPIview(APIView):
+class CreateShareLinkAPIview(APIView, AgentMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -164,34 +113,20 @@ class CreateShareLinkAPIview(APIView):
         tags=tags,
     )
     def post(self, request, id):
-        item, serializer = Finder.get_item_with_id(request, id)
+        item = self.get_item_with_id(request, id)
 
-        if item is None:
-            return Response(
-                {
-                    "error": "Item not found",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if not item:
+            return CustomResponse.error(message=_("Item not found"), status_code=404)
 
-        # Build the link
-        site = get_current_site(request).domain
-        idb64 = urlsafe_base64_encode(force_bytes(item.id))
-        item_type = item._meta.model.__name__
-        type = ""
+        link = self.build_link(request, item)
+        data = {
+            "link":link
+        }
 
-        if item_type == "File":
-            type = "files"
-        else:
-            type = "folders"
-
-        url = reverse("get-shared-item", args=[type, idb64])
-        link = f"{request.scheme}://{site}{url}"
-
-        return Response({"link": link})
+        return CustomResponse.success(message=_("Share link created successfully"), data=data)
 
 
-class GetSharedItemAPIview(APIView):
+class GetSharedItemAPIview(APIView, AgentMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -202,20 +137,17 @@ class GetSharedItemAPIview(APIView):
         tags=tags,
     )
     def get(self, request, type, idb64):
-        item, serializer = Finder.get_item_with_id(request, idb64)
+        id = self.decode(idb64)
+        item = self.get_item_with_id(request, id)
 
-        if item is None:
-            return Response(
-                {
-                    "error": "Item not found",
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if not item:
+            return CustomResponse.error(message=_("Item not found"), status_code=404)
+        
+        serializer = self.serialize(item)
 
         """
             get or create a shared item object under the hood
-            if the item exists, add the user making the request to-
-            -the list of users with access to the file
+            if the item exists, add the user making the request to the list of users with access to the file
         """
 
         try:
@@ -226,13 +158,14 @@ class GetSharedItemAPIview(APIView):
             )
             if not created:
                 users = shared_item.users
+
                 # Exclude the file owner from the list
                 if shared_item.owner != request.user:
                     users.add(request.user)
         except Exception as e:
-            return Response({"error": e})
+            return CustomResponse(message=_(f"An error occured: {e}"))
 
-        return Response({"data": serializer.data})
+        return CustomResponse.success(message=_("Shared item retreive successfully"), data=serializer.data)
 
 
 class UserSharedItemsListCreateAPIview(APIView):
@@ -249,35 +182,42 @@ class UserSharedItemsListCreateAPIview(APIView):
 
         user = User.objects.get(id=request.user.id)
 
-        shared_items = user.shared_items.all()
-        collab_items = user.collab_items.all()
+        shared_items = user.shared_items.all() # Items where the user is the owner
+        collab_items = user.collab_items.all() # Items where the user is a part of the users that hav access to a shared item
 
         shared_items_serializer = self.serializer_class(shared_items, many=True)
-        collab_items_serializer = self.serializer_class(collab_items, many=True)
+        collab_items_serializer = self.serializer_class(collab_items, many=True) 
 
         data = {
             "shared_items": shared_items_serializer.data,
             "collab_items": collab_items_serializer.data,
         }
 
-        return Response({"data": data})
+        return CustomResponse.success(message=_("Shared items retreived successfully"), data=data)
 
 
 class SharedItemDetailAPIView(APIView):
     serializer_class = UserSharedItemsSerializer
 
+    @extend_schema(
+        summary="Shared item detail",
+        description="""
+            This endpoint returns the details of a shared item".
+        """,
+        tags=tags,
+    )
     def get(self, request, id):
         try:
             shared_item = SharedItem.objects.get(id=id)
             serializer = self.serializer_class(
                 shared_item, context={"request": request}
             )
-            return Response({"data": serializer.data})
-        except ObjectDoesNotExist:
-            return Response({"error": "item does not exist"})
+            return CustomResponse.succes(message=_("Item retreived successfully"), data=serializer.data)
+        except SharedItem.DoesNotExist:
+            return CustomResponse.error(message=_("Item not found"), status_code=404)
 
 
-class SearchDriveAPIview(APIView):
+class SearchDriveAPIview(APIView, AgentMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -293,12 +233,16 @@ class SearchDriveAPIview(APIView):
         if query == None:
             query = ""
 
-        obj = Finder.Search_item(request, query)
+        obj = self.search_item(request, query)
         files, folders = obj[0], obj[1]
 
         file_serializer = FileSerializer(files, many=True)
         folder_serializer = FolderSerializer(folders, many=True)
+        data = {
+            "files": file_serializer.data,
+            "folders":folder_serializer.data
+        }
 
-        return Response(
-            {"data": {"files": file_serializer.data, "folders": folder_serializer.data}}
-        )
+        return CustomResponse.success(message=_("Search successful"), data=data)
+
+
