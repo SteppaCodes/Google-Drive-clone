@@ -8,8 +8,7 @@ class RegisterSchema(BaseModel):
     first_name: str = Field(..., max_length=50)
     last_name: str = Field(..., max_length=50)
     email: EmailStr
-    password: str = Field(..., min_length=6)
-    terms_agreement: bool
+    password: str = Field(..., min_length=8)
 
 
 class LoginSchema(BaseModel):
@@ -57,3 +56,51 @@ class AgentTokenResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InviteCreateSchema(BaseModel):
+    email: EmailStr
+    name: str = Field("", max_length=150)  # optional display name hint
+
+
+class InviteClaimSchema(BaseModel):
+    first_name: str = Field(..., max_length=50)
+    last_name: str = Field(..., max_length=50)
+    password: str = Field(..., min_length=8)
+
+
+class InviteResponseSchema(BaseModel):
+    id: UUID
+    email: str
+    name: str
+    token: str  # raw magic token, returned once on creation
+    expires_at: datetime
+    claimed: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InviteListSchema(BaseModel):
+    """Returned on list — excludes the raw token."""
+
+    id: UUID
+    email: str
+    name: str
+    token_prefix: str  # first 8 chars for identification
+    expires_at: datetime
+    claimed: bool
+    claimed_at: datetime | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InvitePreviewSchema(BaseModel):
+    """Public preview returned when validating an invite link."""
+
+    email: str
+    name: str
+    expires_at: datetime

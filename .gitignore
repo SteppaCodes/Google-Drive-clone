@@ -162,3 +162,10 @@ cython_debug/
 # Media and uploaded assets
 static/media/
 
+
+# AgentSecrets environment files
+.env.development
+.env.staging
+.env.production
+.agentsecrets/
+
