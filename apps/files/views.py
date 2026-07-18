@@ -1,21 +1,17 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.pagination import PageNumberPagination
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-
-from .models import File, Comment
-from .serializers import FileSerializer, CommentSerializer, FileWithCommentsSerializer
-from apps.common.permissions import IsOwner, IsOwnerOrShared
-from apps.common.response import CustomResponse
-from apps.common.models import SharedItem
 from django.contrib.contenttypes.models import ContentType
-
-from django.utils.translation import gettext_lazy as _
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.utils.translation import gettext_lazy as _
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
+from apps.common.models import SharedItem
+from apps.common.permissions import IsOwner, IsOwnerOrShared
+from apps.common.response import CustomResponse
+
+from .models import Comment, File
+from .serializers import CommentSerializer, FileSerializer, FileWithCommentsSerializer
 
 tags = [["Files"], ["Comments"]]
 
@@ -42,7 +38,7 @@ class FileListCreateView(APIView):
     def get(self, request):
         user = request.user
         query = request.GET.get("query")
-        if query == None:
+        if query is None:
             query = ""
 
         files = File.objects.filter(owner=user, name__icontains=query)
@@ -105,7 +101,7 @@ class FileUpdateDestroyView(APIView):
     def delete(self, request, id):
         file = get_object_or_404(File, id=id)
         self.check_object_permissions(request, file)
-        
+
         file.delete()
         return CustomResponse.success(message=_("File deleted successfully"))
 
@@ -127,7 +123,7 @@ class DownloadFileAPIView(APIView):
         file_path = file.file.path
 
         # Use FileResponse to handle the file download
-        response = FileResponse(open(file_path, "rb"))
+        response = FileResponse(open(file_path, "rb"))  # noqa: SIM115
         response["Content-Disposition"] = f'attachment; filename="{file.file.name}"'
         return response
 

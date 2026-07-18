@@ -1,14 +1,14 @@
 from django.urls import path
 
 from .views import (
-    StarItemAPIView,
-    UnstarItemAPIView,
-    StarredItemsListAPIView,
     CreateShareLinkAPIView,
     GetSharedItemAPIView,
     SearchDriveAPIView,
-    UserSharedItemsListCreateAPIView,
     SharedItemDetailAPIView,
+    StarItemAPIView,
+    StarredItemsListAPIView,
+    UnstarItemAPIView,
+    UserSharedItemsListCreateAPIView,
 )
 
 urlpatterns = [

@@ -1,12 +1,8 @@
-from django.contrib import admin
-from django.urls import path, include
 from django.conf import settings
-
-from rest_framework import permissions
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-
 from django.conf.urls.static import static
-
+from django.contrib import admin
+from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from lore.api import api
 

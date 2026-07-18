@@ -1,8 +1,9 @@
-from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
+from rest_framework import serializers
 
-from .models import File, Comment
 from apps.common.models import StarredItem
+
+from .models import Comment, File
 
 
 class FileSerializer(serializers.ModelSerializer):

@@ -1,9 +1,9 @@
 #django imports
-from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import authenticate
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.translation import gettext_lazy as _
 
 #Third party imports
 from rest_framework import serializers
@@ -23,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "avatar",
-            
+
         ]
 
 
@@ -42,18 +42,18 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "terms_agreement"
             ]
 
-        
+
     def validate(self, attrs: dict) -> dict:
         password = attrs.get('password')
         password2 = attrs.get('password2')
         terms_agreement = attrs.get("terms_agreement")
         if password!= password2:
             raise serializers.ValidationError(_("passwords do not match"))
-        
+
         if not terms_agreement:
             raise serializers.ValidationError(_("you must agree to the terms of service"))
         return attrs
-    
+
     def create(self, validated_data: dict) -> User:
         user = User.objects.create_user(
             email=validated_data['email'],
@@ -124,7 +124,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(max_length=30, min_length=8, write_only=True)
     token = serializers.CharField(write_only=True)
     uidb64 = serializers.CharField(write_only=True)
-    
+
     class Meta:
         fields = [
             'password',
@@ -152,8 +152,8 @@ class SetNewPasswordSerializer(serializers.Serializer):
                     raise AuthenticationFailed('passwords do not match')
             raise AuthenticationFailed('Link is invalid or expired')
         except Exception as e:
-            raise AuthenticationFailed('Link is invalid or expired')
-        
+            raise AuthenticationFailed('Link is invalid or expired') from e
+
 
 class LogoutSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()

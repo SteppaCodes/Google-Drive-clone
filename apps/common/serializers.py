@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import StarredItem, SharedItem
+from .models import SharedItem, StarredItem
 
 
 class StarredItemsSerializer(serializers.ModelSerializer):
@@ -8,7 +8,7 @@ class StarredItemsSerializer(serializers.ModelSerializer):
         model = StarredItem
         fields = '__all__'
 
-    
+
 class UserSharedItemsSerializer(serializers.ModelSerializer):
     class Meta:
         model = SharedItem

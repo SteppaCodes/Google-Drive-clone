@@ -1,5 +1,5 @@
-from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 
 class CustomResponse:
@@ -13,7 +13,7 @@ class CustomResponse:
         paginator = PageNumberPagination()
         paginator.page_size = page_size
         paginated_data = paginator.paginate_queryset(data, request, view=view)
-        
+
         pagination_details = {
             "count": paginator.page.paginator.count,
             "next": paginator.get_next_link(),
@@ -23,12 +23,12 @@ class CustomResponse:
 
     @staticmethod
     def success(message: str, data=None, paginate: bool = False, request=None, view=None, page_size: int = 10, serializer_class=None, status_code: int = 200) -> Response:
-        
+
         """
-        Constructs a success response with optional pagination. 
+        Constructs a success response with optional pagination.
         Requires 'request' and 'view' if 'paginate' is True to enable pagination context.
         """
-        
+
         response = {
             "status": "success",
             "message": message,
@@ -60,4 +60,3 @@ class CustomResponse:
         }
 
         return Response(data=response, status=status_code)
-    

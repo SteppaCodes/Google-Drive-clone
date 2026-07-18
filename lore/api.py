@@ -4,9 +4,10 @@ from django.utils import timezone
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.security import HttpBearer
-from apps.accounts.models import AgentToken, User
-from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import AccessToken
+
+from apps.accounts.models import AgentToken, User
 
 api = NinjaAPI(
     title="Lore API",

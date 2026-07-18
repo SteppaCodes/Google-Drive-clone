@@ -1,22 +1,22 @@
 import hashlib
 import secrets
 from datetime import timedelta
-from typing import List
 from uuid import UUID
 
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from ninja import Router
 
-from .models import User, AgentToken
-from .schemas import (
-    RegisterSchema,
-    LoginSchema,
-    AgentTokenCreateSchema,
-    AgentTokenCreateResponseSchema,
-    AgentTokenResponseSchema,
-)
 from lore.api import lore_auth
+
+from .models import AgentToken, User
+from .schemas import (
+    AgentTokenCreateResponseSchema,
+    AgentTokenCreateSchema,
+    AgentTokenResponseSchema,
+    LoginSchema,
+    RegisterSchema,
+)
 
 router = Router(tags=["Authentication"])
 
@@ -90,11 +90,11 @@ def create_agent_token(request, data: AgentTokenCreateSchema):
     # Build a response object that includes the raw token (shown once only).
     # AgentTokenCreateResponseSchema expects a `token` field — we attach it
     # transiently since the model no longer stores the raw value.
-    agent_token.token = raw_token  # noqa: attribute set for serialization only
+    agent_token.token = raw_token  # Attribute set for serialization only
     return 201, agent_token
 
 
-@router.get("/tokens", auth=lore_auth, response=List[AgentTokenResponseSchema])
+@router.get("/tokens", auth=lore_auth, response=list[AgentTokenResponseSchema])
 def list_agent_tokens(request):
     return AgentToken.objects.filter(user=request.user)
 

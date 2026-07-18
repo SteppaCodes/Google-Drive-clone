@@ -1,16 +1,15 @@
-from django.utils.translation import gettext_lazy as _
 from django.shortcuts import get_object_or_404
-
-from rest_framework.views import APIView
+from django.utils.translation import gettext_lazy as _
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework.views import APIView
+
+from apps.common.permissions import IsOwnerOrShared
+from apps.common.response import CustomResponse
+from apps.files.serializers import FileSerializer
 
 from .models import Folder
 from .serializers import FolderSerializer
-from apps.files.serializers import FileSerializer
-from apps.common.response import CustomResponse
-from apps.common.permissions import IsOwnerOrShared
-
 
 tags = ["Folders"]
 
@@ -44,14 +43,14 @@ class FolderListCreateAPIView(APIView):
         user = request.user
 
         query = request.GET.get("query")
-        if query == None:
+        if query is None:
             query = ""
 
         folders = Folder.objects.filter(owner=user, name__icontains=query)
 
         if not folders.exists():
             return CustomResponse.success(message=_("You do not have any folders"))
-        
+
         return CustomResponse.success(
             message=_("Folders retrieved successfully"),
             data=folders,
@@ -115,7 +114,7 @@ class FolderDetailAPIView(APIView):
             "files": file_serializer.data,
             "folders": sub_folder_serializer.data
         }
-        
+
         return CustomResponse.success(message=_("Folder details retrieved successfully"), data=data)
 
     @extend_schema(
@@ -128,11 +127,11 @@ class FolderDetailAPIView(APIView):
     def put(self, request, id):
         folder = get_object_or_404(Folder, id=id)
         self.check_object_permissions(request, folder)
-        
+
         serializer = self.serializer_class(folder, data=request.data, context={"request": request}, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        
+
         return CustomResponse.success(message=_("Folder detail updated successfully"), data=serializer.data)
 
     @extend_schema(
@@ -145,6 +144,6 @@ class FolderDetailAPIView(APIView):
     def delete(self, request, id):
         folder = get_object_or_404(Folder, id=id)
         self.check_object_permissions(request, folder)
-        
+
         folder.delete()
         return CustomResponse.success(message=_("Folder deleted successfully"))

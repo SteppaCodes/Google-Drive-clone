@@ -1,5 +1,5 @@
-from django.test import TestCase, Client
-from apps.accounts.models import User, AgentToken
+from django.test import Client, TestCase
+
 
 class AccountsNinjaAPITests(TestCase):
     def setUp(self):
@@ -34,7 +34,7 @@ class AccountsNinjaAPITests(TestCase):
         )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["status"], "success")
-        
+
         jwt_access_token = res.json()["data"]["access_token"]
         headers = {"HTTP_AUTHORIZATION": f"Bearer {jwt_access_token}"}
 
@@ -50,7 +50,7 @@ class AccountsNinjaAPITests(TestCase):
             **headers,
         )
         self.assertEqual(res.status_code, 201)
-        
+
         token_id = res.json()["id"]
         agent_token_key = res.json()["token"]
         self.assertTrue(agent_token_key.startswith("lore_agent_"))

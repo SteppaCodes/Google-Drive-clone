@@ -1,18 +1,17 @@
 import difflib
-from typing import List, Optional
 from uuid import UUID
 
 from django.core.files.base import ContentFile
-from django.shortcuts import get_object_or_404
 from django.http import FileResponse
-from ninja import Router, File, UploadedFile
-from ninja.errors import HttpError
+from django.shortcuts import get_object_or_404
+from ninja import File, Router, UploadedFile
 
-from apps.accounts.models import User
-from apps.common.security import scope_files_queryset, get_allowed_folders_for_request
-from .models import File as FileModel, FileVersion, Comment
-from .schemas import FileResponseSchema, FileVersionResponseSchema, CommentResponseSchema
+from apps.common.security import get_allowed_folders_for_request, scope_files_queryset
 from lore.api import lore_auth
+
+from .models import Comment, FileVersion
+from .models import File as FileModel
+from .schemas import CommentResponseSchema, FileResponseSchema, FileVersionResponseSchema
 
 router = Router(tags=["Files & Version History"])
 
@@ -38,15 +37,14 @@ def compute_diff(old_content: bytes, new_content: bytes) -> str:
 # --- File Upload & Overwrite ---
 
 @router.post("/upload", response={201: FileResponseSchema, 400: dict, 403: dict})
-def upload_file(request, file: UploadedFile = File(...), folder_id: Optional[UUID] = None):
+def upload_file(request, file: UploadedFile = File(...), folder_id: UUID | None = None):  # noqa: B008
     # Verify agent folder boundary
     allowed_folders = get_allowed_folders_for_request(request)
     allowed_ids = [f.id for f in allowed_folders]
-    
+
     agent_token = getattr(request, "agent_token", None)
-    if agent_token and agent_token.restricted_folder:
-        if not folder_id or folder_id not in allowed_ids:
-            return 403, {"message": "Access denied: Target folder is outside sandboxed scope"}
+    if agent_token and agent_token.restricted_folder and (not folder_id or folder_id not in allowed_ids):
+        return 403, {"message": "Access denied: Target folder is outside sandboxed scope"}
 
     # Read new content
     new_content = file.read()
@@ -94,8 +92,8 @@ def upload_file(request, file: UploadedFile = File(...), folder_id: Optional[UUI
 
 # --- File List & Download ---
 
-@router.get("/", response=List[FileResponseSchema])
-def list_files(request, folder_id: Optional[UUID] = None):
+@router.get("/", response=list[FileResponseSchema])
+def list_files(request, folder_id: UUID | None = None):
     qs = FileModel.objects.select_related("owner", "locked_by")
     qs = scope_files_queryset(qs, request)
     if folder_id:
@@ -151,7 +149,7 @@ def unlock_file(request, file_id: UUID):
 
 # --- Version History & Diffs ---
 
-@router.get("/{file_id}/versions", response=List[FileVersionResponseSchema], auth=lore_auth)
+@router.get("/{file_id}/versions", response=list[FileVersionResponseSchema], auth=lore_auth)
 def list_file_versions(request, file_id: UUID):
     qs = FileModel.objects.all()
     qs = scope_files_queryset(qs, request)
@@ -163,7 +161,7 @@ def list_file_versions(request, file_id: UUID):
 
 # --- Comments endpoints ---
 
-@router.get("/{file_id}/comments", response=List[CommentResponseSchema], auth=lore_auth)
+@router.get("/{file_id}/comments", response=list[CommentResponseSchema], auth=lore_auth)
 def list_comments(request, file_id: UUID):
     qs = FileModel.objects.all()
     qs = scope_files_queryset(qs, request)

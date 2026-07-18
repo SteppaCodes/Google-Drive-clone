@@ -1,23 +1,26 @@
-#django imports 
+#django imports
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.encoding import smart_str, DjangoUnicodeDecodeError
+from django.utils.encoding import DjangoUnicodeDecodeError, smart_str
 from django.utils.http import urlsafe_base64_decode
+from drf_spectacular.utils import OpenApiExample, extend_schema
+from rest_framework.permissions import IsAuthenticated
 
 #third party imports
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiExample
+
+from apps.common.response import CustomResponse
+
+from .email import SendMail
+from .models import User
+
 #local imports
 from .serializers import (
-                        RegisterSerializer, 
-                        LoginSerializer, 
-                        LogoutSerializer,
-                        ResetPasswordSerializer, 
-                        SetNewPasswordSerializer
-                    )
-from . models import User
-from .email import SendMail
-from apps.common.response import CustomResponse
+    LoginSerializer,
+    LogoutSerializer,
+    RegisterSerializer,
+    ResetPasswordSerializer,
+    SetNewPasswordSerializer,
+)
 
 tags = ["Auth"]
 
@@ -46,7 +49,7 @@ class RegisterUserAPIView(APIView):
                 data=serializer.data,
                 status_code=201
             )
-        
+
 class LoginUserAPIView(APIView):
     serializer_class = LoginSerializer
 
@@ -76,7 +79,7 @@ class LoginUserAPIView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         return CustomResponse.success(
             message="Login successful",
             data=serializer.data
@@ -91,10 +94,10 @@ class ResetPasswordRequestAPIView(APIView):
                 This endpoint sends a reset password email with link to reset password
                 Note
                  - A link to reset password is sent to user, embedded in the link is an encoding of the user's id
-                 and a token 
+                 and a token
                  - The link calls the 'auth/reset-password-confirm` endpoint
                 """,
-            tags=tags, 
+            tags=tags,
             request=ResetPasswordSerializer,
             responses={"200": ResetPasswordSerializer},
     )
@@ -114,7 +117,7 @@ class ResetPasswordConfirm(APIView):
             description="""
             This endpoint confirms a user's password reset link
             Note:
-             - The link in the email calls this endpoint, you have to redirect to the page for user to set new password 
+             - The link in the email calls this endpoint, you have to redirect to the page for user to set new password
              if the response returned is success
              - If not success, allow user request link again or handle it in whichever way you see fit
             """,
@@ -135,7 +138,7 @@ class ResetPasswordConfirm(APIView):
                     data=data
                 )
             return CustomResponse.error(message="Token is invalid or expired")
-        
+
         except DjangoUnicodeDecodeError:
             return CustomResponse.error(message="User not found", status_code=404)
 
@@ -147,14 +150,14 @@ class SetNewPasswordAPIView(APIView):
             summary = "Reset Password",
             description="""
             This endpoint changes the user's password
-            Note: 
+            Note:
             - this is the final step in the password reset. User's password gets changed
             """,
             tags=tags
     )
     def patch(self, request):
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)   
+        serializer.is_valid(raise_exception=True)
 
         return CustomResponse.success(message="Password reset successfully")
 
@@ -173,4 +176,3 @@ class LogoutUserAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return CustomResponse.success(message="Logged out successfully")
-        

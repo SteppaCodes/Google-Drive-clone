@@ -1,11 +1,11 @@
-from datetime import timedelta
 import hashlib
+
 from django.core.files.base import ContentFile
-from django.test import TestCase, Client
-from django.utils import timezone
-from apps.accounts.models import User, AgentToken
+from django.test import Client, TestCase
+
+from apps.accounts.models import AgentToken, User
 from apps.folders.models import Folder
-from apps.files.models import File as FileModel, FileVersion, Comment
+
 
 class FilesNinjaAPITests(TestCase):
     def setUp(self):
@@ -148,7 +148,7 @@ class FilesNinjaAPITests(TestCase):
         file_id = res.json()["id"]
 
         # 1. Read-only agent tries to read files (should succeed)
-        res = self.client.get(f"/api/files/", **self.ro_headers)
+        res = self.client.get("/api/files/", **self.ro_headers)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
 

@@ -1,14 +1,14 @@
-from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
+from rest_framework import serializers
+
+from apps.common.models import StarredItem
 
 from .models import Folder
-from apps.files.serializers import  FileSerializer
-from apps.common.models import StarredItem
 
 
 class FolderSerializer(serializers.ModelSerializer):
     starred = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Folder
         fields = [

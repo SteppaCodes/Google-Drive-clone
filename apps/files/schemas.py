@@ -1,17 +1,18 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
+
 from pydantic import BaseModel, Field
+
 
 class FileResponseSchema(BaseModel):
     id: UUID
     name: str
     file_url: str = Field(..., alias="file")
-    folder_id: Optional[UUID] = None
+    folder_id: UUID | None = None
     owner_id: UUID
     owner_email: str
-    locked_by_id: Optional[UUID] = None
-    locked_by_email: Optional[str] = None
+    locked_by_id: UUID | None = None
+    locked_by_email: str | None = None
     size: int
     created_at: datetime
     updated_at: datetime
@@ -28,7 +29,7 @@ class FileResponseSchema(BaseModel):
             size = file_obj.file.size if file_obj.file else 0
         except Exception:
             size = 0
-        
+
         return cls(
             id=file_obj.id,
             name=file_obj.name,
@@ -48,7 +49,7 @@ class FileVersionResponseSchema(BaseModel):
     version_number: int
     file_instance_url: str = Field(..., alias="file_instance")
     diff_content: str
-    created_by_email: Optional[str] = None
+    created_by_email: str | None = None
     created_at: datetime
 
     class Config:

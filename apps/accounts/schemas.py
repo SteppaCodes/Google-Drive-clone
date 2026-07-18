@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -25,8 +25,8 @@ class TokenResponseSchema(BaseModel):
 class AgentTokenCreateSchema(BaseModel):
     description: str = Field(..., max_length=500)
     scope: str = Field("read_write", max_length=20)
-    restricted_folder_id: Optional[UUID] = None
-    expires_in_days: Optional[int] = Field(90, ge=1, le=365)
+    restricted_folder_id: UUID | None = None
+    expires_in_days: int | None = Field(90, ge=1, le=365)
 
 
 class AgentTokenCreateResponseSchema(BaseModel):
@@ -36,8 +36,8 @@ class AgentTokenCreateResponseSchema(BaseModel):
     token: str
     description: str
     scope: str
-    restricted_folder_id: Optional[UUID] = None
-    expires_at: Optional[datetime] = None
+    restricted_folder_id: UUID | None = None
+    expires_at: datetime | None = None
     created_at: datetime
 
     class Config:
@@ -51,8 +51,8 @@ class AgentTokenResponseSchema(BaseModel):
     token_prefix: str
     description: str
     scope: str
-    restricted_folder_id: Optional[UUID] = None
-    expires_at: Optional[datetime] = None
+    restricted_folder_id: UUID | None = None
+    expires_at: datetime | None = None
     created_at: datetime
 
     class Config:

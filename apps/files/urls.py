@@ -1,10 +1,6 @@
 from django.urls import path
 
-from .views import (
-                    FileListCreateView, FileUpdateDestroyView, 
-                    DownloadFileAPIView, CommentOnFile, GetFileComments,
-                    CommentOnFile 
-                    )
+from .views import CommentOnFile, DownloadFileAPIView, FileListCreateView, FileUpdateDestroyView, GetFileComments
 
 urlpatterns = [
     path('files/', FileListCreateView.as_view()),

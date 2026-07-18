@@ -1,6 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+
 from apps.accounts.models import User
 from apps.folders.models import Folder
 
@@ -36,7 +37,7 @@ class FolderAPITests(APITestCase):
     def test_list_folders_paginated(self):
         for i in range(15):
             Folder.objects.create(name=f"Folder {i}", owner=self.user)
-        
+
         url = reverse("list-create-folder")
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

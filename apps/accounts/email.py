@@ -1,11 +1,12 @@
-from django.core.mail import EmailMessage
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
+import threading
+
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import EmailMessage
 from django.urls import reverse
-import threading
-from rest_framework.exceptions import ValidationError
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+
 from .models import User
 
 
@@ -15,7 +16,7 @@ class EmailThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        self.email.send() 
+        self.email.send()
 
 class SendMail:
 
@@ -28,7 +29,7 @@ class SendMail:
             token = PasswordResetTokenGenerator().make_token(user)
             site_domain = get_current_site(request).domain
             #Url that calls our reset password view
-            relative_url = reverse('reset-password-confirm', 
+            relative_url = reverse('reset-password-confirm',
                                    kwargs={'uidb64':uidb64, 'token':token})
             #url that will be displayed in the email message
             abs_url = f"http://{site_domain}{relative_url}"

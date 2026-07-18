@@ -1,6 +1,7 @@
 from django.db.models import QuerySet
+
 from apps.folders.models import Folder
-from apps.files.models import File
+
 
 def get_allowed_folders_for_request(request) -> list:
     """
@@ -14,7 +15,7 @@ def get_allowed_folders_for_request(request) -> list:
     if agent_token and agent_token.restricted_folder:
         # Agent is restricted to a specific folder and all its descendants recursively
         return agent_token.restricted_folder.get_descendants(include_self=True)
-    
+
     # Otherwise, return all folders owned by the user
     return list(Folder.objects.filter(owner=user))
 
@@ -31,7 +32,7 @@ def scope_folders_queryset(queryset: QuerySet, request) -> QuerySet:
         allowed_folders = get_allowed_folders_for_request(request)
         allowed_ids = [f.id for f in allowed_folders]
         return queryset.filter(id__in=allowed_ids)
-    
+
     return queryset.filter(owner=user)
 
 def scope_files_queryset(queryset: QuerySet, request) -> QuerySet:
@@ -47,5 +48,5 @@ def scope_files_queryset(queryset: QuerySet, request) -> QuerySet:
         allowed_folders = get_allowed_folders_for_request(request)
         allowed_ids = [f.id for f in allowed_folders]
         return queryset.filter(folder_id__in=allowed_ids)
-    
+
     return queryset.filter(owner=user)

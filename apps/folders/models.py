@@ -1,9 +1,8 @@
 from django.db import models
-from django.contrib.contenttypes.fields import  GenericRelation
 
-
-from apps.common.models import BaseModel
 from apps.accounts.models import User
+from apps.common.models import BaseModel
+
 
 class Folder(BaseModel):
     name = models.CharField(max_length=200)
@@ -19,13 +18,10 @@ class Folder(BaseModel):
         Recursive Common Table Expression (CTE). Works natively on PostgreSQL and SQLite.
         """
         from django.db import connection
-        
+
         # Database-agnostic UUID handling
-        if connection.vendor == 'sqlite':
-            param = self.id.hex
-        else:
-            param = str(self.id)
-        
+        param = self.id.hex if connection.vendor == 'sqlite' else str(self.id)
+
         query = """
             WITH RECURSIVE folder_tree AS (
                 SELECT id FROM folders_folder WHERE id = %s
@@ -38,13 +34,13 @@ class Folder(BaseModel):
         with connection.cursor() as cursor:
             cursor.execute(query, [param])
             rows = cursor.fetchall()
-        
+
         folder_ids = [row[0] for row in rows]
-        
+
         if not include_self:
             self_str = self.id.hex if connection.vendor == 'sqlite' else str(self.id)
             folder_ids = [fid for fid in folder_ids if str(fid) != self_str]
-            
+
         return list(Folder.objects.filter(id__in=folder_ids))
 
 

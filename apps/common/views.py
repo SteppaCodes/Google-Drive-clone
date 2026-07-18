@@ -1,18 +1,17 @@
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
-
-from rest_framework.views import APIView
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework.views import APIView
 
-from .models import StarredItem, SharedItem
-from .response import CustomResponse
-from .mixins import ItemLookupMixin
-from .serializers import StarredItemsSerializer, UserSharedItemsSerializer
+from apps.accounts.models import User
 from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
-from apps.accounts.models import User
 
+from .mixins import ItemLookupMixin
+from .models import SharedItem, StarredItem
+from .response import CustomResponse
+from .serializers import StarredItemsSerializer, UserSharedItemsSerializer
 
 tags = ["Common Functionalities"]
 
@@ -31,7 +30,7 @@ class StarItemAPIView(APIView, ItemLookupMixin):
 
         if not item:
             return CustomResponse.error(message=_("Item not found"), status_code=404)
-        
+
         serializer = self.serialize(item)
 
         starred_item, created = StarredItem.objects.get_or_create(
@@ -42,7 +41,7 @@ class StarItemAPIView(APIView, ItemLookupMixin):
 
         if not created:
             return CustomResponse.error(message=_("Item already starred"))
-            
+
         return CustomResponse.success(message=_("Item starred successfully"), data=serializer.data, status_code=201)
 
 
@@ -143,7 +142,7 @@ class GetSharedItemAPIView(APIView, ItemLookupMixin):
 
         if not item:
             return CustomResponse.error(message=_("Item not found"), status_code=404)
-        
+
         serializer = self.serialize(item)
 
         """
@@ -185,7 +184,7 @@ class UserSharedItemsListCreateAPIView(APIView):
         collab_items = user.collab_items.all() # Items where the user is a part of the users that hav access to a shared item
 
         shared_items_serializer = self.serializer_class(shared_items, many=True)
-        collab_items_serializer = self.serializer_class(collab_items, many=True) 
+        collab_items_serializer = self.serializer_class(collab_items, many=True)
 
         data = {
             "shared_items": shared_items_serializer.data,
@@ -230,7 +229,7 @@ class SearchDriveAPIView(APIView, ItemLookupMixin):
     def get(self, request):
         query = request.GET.get("query")
 
-        if query == None:
+        if query is None:
             query = ""
 
         obj = self.search_item(request, query)

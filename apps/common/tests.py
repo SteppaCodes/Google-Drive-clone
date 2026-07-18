@@ -1,5 +1,7 @@
-from django.test import TestCase, Client
+from django.test import Client, TestCase
+
 from apps.accounts.models import User
+
 
 class NinjaAPITests(TestCase):
     def setUp(self):

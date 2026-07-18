@@ -1,14 +1,14 @@
-from .views import (
-    RegisterUserAPIView, 
-    LoginUserAPIView, 
-    LogoutUserAPIView,
-    ResetPasswordRequestAPIView,
-    ResetPasswordConfirm,
-    SetNewPasswordAPIView
-    )
+from django.urls import path
 from rest_framework_simplejwt.views import token_refresh
 
-from django.urls import path 
+from .views import (
+    LoginUserAPIView,
+    LogoutUserAPIView,
+    RegisterUserAPIView,
+    ResetPasswordConfirm,
+    ResetPasswordRequestAPIView,
+    SetNewPasswordAPIView,
+)
 
 urlpatterns = [
     path('register/', RegisterUserAPIView.as_view()),
