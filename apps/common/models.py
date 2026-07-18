@@ -16,22 +16,23 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+        ordering = ["-created_at"]
 
 
 class StarredItem(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.UUIDField(default=uuid.uuid4)
+    object_id = models.UUIDField()
     file_or_folder = GenericForeignKey("content_type", "object_id")
 
     def __str__(self):
-        return self.file_or_folder
+        return str(self.file_or_folder) if self.file_or_folder else f"StarredItem {self.id}"
 
 
 class SharedItem(BaseModel):
     users = models.ManyToManyField(User, related_name="collab_items",verbose_name=_("all users that have a access to the file or folder"))
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.UUIDField(default=uuid.uuid4)
+    object_id = models.UUIDField()
     owner = models.ForeignKey(
         User, related_name="shared_items", on_delete=models.CASCADE
     )

@@ -75,9 +75,10 @@ class UnstarItemAPIView(APIView, AgentMixin):
             object_id=id,
         )
 
-        if not starred_item.exists9():
+        if not starred_item.exists():
             return CustomResponse.error(message=_("Item not found"), status_code=404)
 
+        starred_item.delete()
         return CustomResponse.success(message=_("Item unstarred successfully"))
 
 
@@ -152,24 +153,22 @@ class GetSharedItemAPIview(APIView, AgentMixin):
 
         try:
             shared_item, created = SharedItem.objects.get_or_create(
-                owner=request.user,
+                owner=item.owner,
                 content_type=ContentType.objects.get_for_model(item),
                 object_id=id,
             )
-            if not created:
-                users = shared_item.users
-
-                # Exclude the file owner from the list
-                if shared_item.owner != request.user:
-                    users.add(request.user)
+            # Add the user to the access list if they are not the owner
+            if item.owner != request.user:
+                shared_item.users.add(request.user)
         except Exception as e:
-            return CustomResponse(message=_(f"An error occured: {e}"))
+            return CustomResponse.error(message=_(f"An error occurred: {e}"), status_code=500)
 
-        return CustomResponse.success(message=_("Shared item retreive successfully"), data=serializer.data)
+        return CustomResponse.success(message=_("Shared item retrieved successfully"), data=serializer.data)
 
 
 class UserSharedItemsListCreateAPIview(APIView):
     serializer_class = UserSharedItemsSerializer
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         summary="Get shared files or folders for a user",
@@ -198,6 +197,7 @@ class UserSharedItemsListCreateAPIview(APIView):
 
 class SharedItemDetailAPIView(APIView):
     serializer_class = UserSharedItemsSerializer
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         summary="Shared item detail",
@@ -212,7 +212,7 @@ class SharedItemDetailAPIView(APIView):
             serializer = self.serializer_class(
                 shared_item, context={"request": request}
             )
-            return CustomResponse.succes(message=_("Item retreived successfully"), data=serializer.data)
+            return CustomResponse.success(message=_("Item retrieved successfully"), data=serializer.data)
         except SharedItem.DoesNotExist:
             return CustomResponse.error(message=_("Item not found"), status_code=404)
 

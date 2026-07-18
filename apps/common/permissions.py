@@ -1,14 +1,31 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+from django.contrib.contenttypes.models import ContentType
+from apps.common.models import SharedItem
 
 
-class ISOwner(BasePermission):
+class IsOwner(BasePermission):
     def has_permission(self, request, view):
-        return True
-    
-    def has_object_permission(self, request, view, obj):
-        user = request.user
+        return request.user and request.user.is_authenticated
 
-        if obj.owner == user:
+    def has_object_permission(self, request, view, obj):
+        return request.user and obj.owner == request.user
+
+
+class IsOwnerOrShared(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        if request.user and obj.owner == request.user:
             return True
-        else:
-            return False
+        
+        # Non-owners can only read if the item has been shared with them
+        if request.method in SAFE_METHODS:
+            content_type = ContentType.objects.get_for_model(obj)
+            return SharedItem.objects.filter(
+                content_type=content_type,
+                object_id=obj.id,
+                users=request.user
+            ).exists()
+            
+        return False

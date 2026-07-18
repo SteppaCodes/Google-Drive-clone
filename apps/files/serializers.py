@@ -17,14 +17,13 @@ class FileSerializer(serializers.ModelSerializer):
             "starred",
             "name",
             "file",
-            "name",
             "owner",
             "folder",
             "size",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "size", "owner", "name", "created_at", "updateed_at"]
+        read_only_fields = ["id", "size", "owner", "name", "created_at", "updated_at"]
 
     def validate(self, attrs):
         file = attrs.get("file")
@@ -70,7 +69,7 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at", "owner"]
 
 
-class FileWithCommentsSerialzer(serializers.ModelSerializer):
+class FileWithCommentsSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True)
 
     class Meta:

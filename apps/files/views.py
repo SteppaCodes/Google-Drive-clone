@@ -6,9 +6,11 @@ from rest_framework.pagination import PageNumberPagination
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import File, Comment
-from .serializers import FileSerializer, CommentSerializer, FileWithCommentsSerialzer
-from apps.common.permissions import ISOwner
+from .serializers import FileSerializer, CommentSerializer, FileWithCommentsSerializer
+from apps.common.permissions import IsOwner, IsOwnerOrShared
 from apps.common.response import CustomResponse
+from apps.common.models import SharedItem
+from django.contrib.contenttypes.models import ContentType
 
 from django.utils.translation import gettext_lazy as _
 from django.http import FileResponse
@@ -24,7 +26,7 @@ class FileListCreateView(APIView):
     @extend_schema(
         summary="Get files",
         description="""
-            This endpoint retreives all user's files.
+            This endpoint retrieves all user's files.
         """,
         tags=tags[0],
         parameters=[
@@ -45,14 +47,17 @@ class FileListCreateView(APIView):
 
         files = File.objects.filter(owner=user, name__icontains=query)
 
-        if not files:
-            return CustomResponse.success(self, message=_("You do not have any files"))
+        if not files.exists():
+            return CustomResponse.success(message=_("You do not have any files"))
 
-        serializer = self.serializer_class(files, many=True, context={"request": request})
-        return CustomResponse.success( message=_("Files retreived successfully"), data=serializer.data, 
-                                      paginate=True, request=request, view=self)
-
-
+        return CustomResponse.success(
+            message=_("Files retrieved successfully"),
+            data=files,
+            paginate=True,
+            request=request,
+            view=self,
+            serializer_class=self.serializer_class
+        )
 
     @extend_schema(
         summary="Upload file",
@@ -67,11 +72,12 @@ class FileListCreateView(APIView):
 
         user = request.user
         serializer.save(owner=user)
-        return CustomResponse.success(message=_("File uploaded succesfully"), data=serializer.data, status_code=201)
+        return CustomResponse.success(message=_("File uploaded successfully"), data=serializer.data, status_code=201)
+
 
 class FileUpdateDestroyView(APIView):
     serializer_class = FileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
 
     @extend_schema(
         summary="update files",
@@ -81,15 +87,13 @@ class FileUpdateDestroyView(APIView):
         tags=tags[0],
     )
     def put(self, request, id):
-        file = File.objects.get(id=id)
+        file = get_object_or_404(File, id=id)
+        self.check_object_permissions(request, file)
 
-        if not file:
-            return CustomResponse.error(message=_("File not found"), status_code=404)
-
-        serializer = self.serializer_class(file, data=request.data, context={"request": request})
-        serializer.is_valid()
+        serializer = self.serializer_class(file, data=request.data, context={"request": request}, partial=True)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
-        return CustomResponse.success(message=_("File updated successfully"))
+        return CustomResponse.success(message=_("File updated successfully"), data=serializer.data)
 
     @extend_schema(
         summary="Delete files",
@@ -99,16 +103,15 @@ class FileUpdateDestroyView(APIView):
         tags=tags[0],
     )
     def delete(self, request, id):
-        file = File.objects.get(id=id)
-
-        if not file:
-            return CustomResponse.error(message=_("File not found"), status_code=404)
+        file = get_object_or_404(File, id=id)
+        self.check_object_permissions(request, file)
         
         file.delete()
         return CustomResponse.success(message=_("File deleted successfully"))
 
 
 class DownloadFileAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOrShared]
 
     @extend_schema(
         summary="Download files",
@@ -118,10 +121,8 @@ class DownloadFileAPIView(APIView):
         tags=tags[0],
     )
     def get(self, request, file_id):
-        try:
-            file = File.objects.get(id=file_id)
-        except File.DoesNotExist:
-            return CustomResponse.error(message=_("File not found"))
+        file = get_object_or_404(File, id=file_id)
+        self.check_object_permissions(request, file)
 
         file_path = file.file.path
 
@@ -133,7 +134,7 @@ class DownloadFileAPIView(APIView):
 
 class CommentOnFile(APIView):
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrShared]
 
     @extend_schema(
         summary="Comment on file",
@@ -145,6 +146,7 @@ class CommentOnFile(APIView):
     def post(self, request, id):
         owner = request.user
         file = get_object_or_404(File, id=id)
+        self.check_object_permissions(request, file)
 
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -160,19 +162,29 @@ class GetFileComments(APIView):
     @extend_schema(
         summary="Get comments",
         description="""
-            This endpoint retreives all file's comments.
+            This endpoint retrieves all file's comments.
         """,
         tags=tags[1],
     )
     def get(self, request, id):
-        file = File.objects.prefetch_related("comments").get(id=id)
+        file = get_object_or_404(File.objects.prefetch_related("comments"), id=id)
 
-        if not file.comments:
+        # Check permission manually since GetFileComments does not bind the file directly as the view object
+        if file.owner != request.user:
+            content_type = ContentType.objects.get_for_model(file)
+            has_access = SharedItem.objects.filter(
+                content_type=content_type,
+                object_id=file.id,
+                users=request.user
+            ).exists()
+            if not has_access:
+                return CustomResponse.error(message=_("You do not have permission to access this file"), status_code=403)
+
+        if not file.comments.exists():
             return CustomResponse.success(message=_("File has no comments"))
 
-        serializer = FileWithCommentsSerialzer(file)
-        return CustomResponse.success(message=_("Comments retreived successfully"), data=serializer.data, paginate=True, 
-                                      request=request, view=self)
+        serializer = FileWithCommentsSerializer(file)
+        return CustomResponse.success(message=_("Comments retrieved successfully"), data=serializer.data)
 
     @extend_schema(
         summary="Update comment",
@@ -182,15 +194,18 @@ class GetFileComments(APIView):
         tags=tags[1],
     )
     def put(self, request, id):
-        comment = Comment.objects.get(id=id)
-
-        if not comment:
+        try:
+            comment = Comment.objects.get(id=id)
+        except Comment.DoesNotExist:
             return CustomResponse.error(message=_("Comment not found"), status_code=404)
 
-        serializer = self.serializer_class(comment, data=request.data)
+        if comment.owner != request.user:
+            return CustomResponse.error(message=_("You do not have permission to update this comment"), status_code=403)
+
+        serializer = self.serializer_class(comment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return CustomResponse.success(message=_("Comment updated successfully"))
+        return CustomResponse.success(message=_("Comment updated successfully"), data=serializer.data)
 
     @extend_schema(
         summary="Delete comment",
@@ -200,10 +215,12 @@ class GetFileComments(APIView):
         tags=tags[1],
     )
     def delete(self, request, id):
-        comment = Comment.objects.get(id=id)
+        try:
+            comment = Comment.objects.get(id=id)
+        except Comment.DoesNotExist:
+            return CustomResponse.error(message=_("Comment not found"), status_code=404)
+
         if request.user == comment.owner or request.user == comment.file.owner:
             comment.delete()
-            return Response({"success": "comment deleted succesfully"})
-        return Response(
-            {"error": "you do not have the permission to delete this comment"}
-        )
+            return CustomResponse.success(message=_("Comment deleted successfully"))
+        return CustomResponse.error(message=_("You do not have permission to delete this comment"), status_code=403)

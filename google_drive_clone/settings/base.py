@@ -92,12 +92,12 @@ WSGI_APPLICATION = "google_drive_clone.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB"),
-        "USER": config("POSTGRES_USER"),
-        "PASSWORD": config("POSTGRES_PASSWORD"),
-        "HOST": config("POSTGRES_HOST"),
-        "PORT": config("POSTGRES_PORT"),
+        "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
+        "NAME": config("POSTGRES_DB", default=""),
+        "USER": config("POSTGRES_USER", default=""),
+        "PASSWORD": config("POSTGRES_PASSWORD", default=""),
+        "HOST": config("POSTGRES_HOST", default=""),
+        "PORT": config("POSTGRES_PORT", default=""),
     }
 }
 # Password validation

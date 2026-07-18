@@ -12,8 +12,7 @@ from apps.folders.serializers import FolderSerializer
 
 
 class AgentMixin:
-    @staticmethod
-    def get_item_with_id(request, id=None, idb64=None):
+    def get_item_with_id(self, request, id=None, idb64=None):
         if idb64:
             id = force_str(urlsafe_base64_decode(idb64))
         try:
@@ -26,9 +25,7 @@ class AgentMixin:
             except Folder.DoesNotExist:
                 return None
 
-    @staticmethod
-    def search_item(request, query):
-
+    def search_item(self, request, query):
         try:
             files = File.objects.filter(name__icontains=query, owner=request.user)
             folders = Folder.objects.filter(name__icontains=query, owner=request.user)
@@ -36,27 +33,21 @@ class AgentMixin:
         except ObjectDoesNotExist:
             return None, None
 
-    @staticmethod
     def serialize(self, item, many=False):
+        request = getattr(self, "request", None)
         if isinstance(item, File):
-            item = FileSerializer(item, many)
-        
+            return FileSerializer(item, many=many, context={"request": request})
         elif isinstance(item, Folder):
-            item = FolderSerializer(item, many)
-        
+            return FolderSerializer(item, many=many, context={"request": request})
         else:
             raise ValueError(_("Invalid item"))
-        
-        return item
-    
-    @staticmethod
+
     def build_link(self, request, item):
         site = get_current_site(request).domain
         idb64 = self.encode(item.id)
         item_type = item._meta.model.__name__ # Get the model name
-        type = ""
 
-        # Dynamically set url type eg ..get-shared-itmes/files or get-shared-items/folders
+        # Dynamically set url type eg ..get-shared-items/files or get-shared-items/folders
         if item_type == "File":
             type = "files"
         else:
@@ -66,13 +57,11 @@ class AgentMixin:
         link = f"{request.scheme}://{site}{url}"
 
         return link
-    
-    @staticmethod
+
     def encode(self, item_id):
         idb64 = urlsafe_base64_encode(force_bytes(item_id))
         return idb64
-    
-    @staticmethod
+
     def decode(self, idb64):
         id = force_str(urlsafe_base64_decode(idb64))
         return id

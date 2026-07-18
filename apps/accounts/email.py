@@ -35,10 +35,9 @@ class SendMail:
 
             message = EmailMessage(
                 subject=subject,
-                body= f"Hi {user.username}!, We received a request to reset your password\n Please click the link to reset\n {abs_url}\nIf you did not make this request, please ignore, someone might have entere your email by mistakae\nThank You!",
+                body= f"Hi {user.full_name}!, We received a request to reset your password.\nPlease click the link to reset:\n{abs_url}\n\nIf you did not make this request, please ignore. Someone might have entered your email by mistake.\nThank You!",
                 to= [email]
             )
-            message.content_subtype = "html"
             EmailThread(message).start()
         except User.DoesNotExist:
-            raise ValidationError("user with email does not exist")
+            pass

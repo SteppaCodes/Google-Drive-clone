@@ -22,7 +22,7 @@ class CustomResponse:
         return paginated_data, pagination_details
 
     @staticmethod
-    def success(message: str, data=None, paginate: bool = False, request=None, view=None, page_size: int = 10) -> Response:
+    def success(message: str, data=None, paginate: bool = False, request=None, view=None, page_size: int = 10, serializer_class=None, status_code: int = 200) -> Response:
         
         """
         Constructs a success response with optional pagination. 
@@ -41,11 +41,15 @@ class CustomResponse:
 
             paginated_data, pagination_details = CustomResponse._paginate_data(data, request, view, page_size)
             response["pagination"] = pagination_details
-            response["data"] = paginated_data
+            if serializer_class is not None:
+                serializer = serializer_class(paginated_data, many=True, context={"request": request})
+                response["data"] = serializer.data
+            else:
+                response["data"] = paginated_data
         elif data is not None:
             response["data"] = data
 
-        return Response(response, status=200)
+        return Response(response, status=status_code)
 
     @staticmethod
     def error(message: str, status_code: int=400) -> Response:
