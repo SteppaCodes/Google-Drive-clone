@@ -9,7 +9,7 @@ endif
 RUN = agentsecrets env --
 
 act:
-	source env/Scripts/activate
+	. env/bin/activate
 
 mmig: # run with "make mmig" or "make mmig app='app'"
 	if [ -z "$(app)" ]; then \
@@ -27,6 +27,12 @@ mig: # run with "make mig" or "make mig app='app'"
 
 run:
 	$(RUN) python manage.py runserver
+
+test:
+	$(RUN) python manage.py test
+
+mcp:
+	$(RUN) python mcp_server.py
 
 cpass:
 	$(RUN) python manage.py changepassword "$(email)"
