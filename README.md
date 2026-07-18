@@ -1,35 +1,37 @@
 # Lore
 
-### Self-Hosted, Collaborative Memory & Artifact Vault for AI Agents and Humans
+### Collaborative File Vault, Skill Registry, and Artifact Workspace for AI Agents and Humans
 
 [![Organization](https://img.shields.io/badge/Org-The--17-blue.svg)](https://github.com/The-17)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Native-green.svg)](https://modelcontextprotocol.io)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL%20%2B%20pgvector-blue.svg)](https://github.com/pgvector/pgvector)
 
+> [!WARNING]
+> **Work In Progress (WIP)**: Lore is under active development. The codebase is experimental and APIs are subject to change. Until a stable release tag is published, it is not recommended for production use.
+
 **Lore** is an open-source, self-hosted workspace and knowledge vault built from the ground up for hybrid collaboration between **AI Agents** and **Humans**. It combines the permission-aware folder structures of Google Drive, the bidirectional markdown note-graphing of Obsidian, and the native tool-connectivity of the Model Context Protocol (MCP) into a single, light, and semantic-search-enabled database.
 
 ---
 
-## The Problem: The Agent Memory Crisis
+## The Problem: The Agent Artifact and Skill Black Hole
 
-As LLMs transition from chatbots to autonomous software agents, they encounter a critical bottleneck in how they access, store, and share knowledge:
+As LLMs transition from chat sessions to autonomous software agents, they encounter a critical bottleneck in how they read reasoning rules (skills) and write deliverables (artifacts):
 
-1. **The RAG Context Drawer**: Dumping raw files or transcripts into vector databases yields irrelevant, bloated context chunks. Agents lose reasoning ability and run up massive API costs trying to parse noise.
-2. **The Amnesia Trap**: Agents lack persistent, cumulative state. A decision or lesson learned on Project A cannot be accessed by an agent working on Project B. Every run starts cold.
-3. **The Artifact Black Hole**: Coding and research agents dump intermediate drafts, logs, schemas, and configurations into hidden local folders or ephemeral Docker containers. Humans have zero visibility, no review interface, and no control over what the agent writes.
-4. **The Blackboard Coordination Gap**: Multi-agent loops lack a secure, shared blackboard. Agents writing to the same filesystem encounter race conditions, file corruption, or permission violations.
+1. **The Context Bloat Trap**: Agents load massive static system prompts or entire local directories of instruction manuals (skills) for every run. This wastes tokens, degrades LLM focus, and drives up execution costs.
+2. **Ephemeral Artifacts**: Coding and research agents dump intermediate drafts, logs, schemas, and configurations into hidden local folders or isolated Docker volumes. Humans have zero visibility, no review interface, and no control over what the agent writes.
+3. **The Blackboard Coordination Gap**: Multi-agent loops lack a secure, shared blackboard. Agents writing to the same filesystem encounter race conditions, file corruption, or permission violations.
 
 ---
 
 ## The Solution: Lore
 
-Lore is the dedicated **memory, skill, and artifact plane** for human-agent collaboration. It decouples the agent's reasoning guidelines and decision history from the target code repository, offering:
+Lore is the dedicated **file, skill, and artifact plane** for human-agent collaboration. It decouples the agent's reasoning guidelines and output history from the target code repository, offering:
 
 *   **A Shared Workspace**: A secure, self-hosted web vault where humans and agents co-exist as first-class users.
 *   **Version Control & Diffs**: Every agent file write automatically generates a new version with line-by-line unified diffs, giving humans a visual review layer to audit or revert agent changes.
-*   **Dynamic Skill Store**: Agents load only the specific `SKILL.md` they need for a task via the MCP tool registry, reducing context window sizes by up to 60%.
-*   **Global Precedent Sync**: A centralized `decision-log.md` compiles lessons across the network. When one agent learns a rule, all other agents inherit it instantly.
+*   **Dynamic Skill Store**: Agents load only the specific `SKILL.md` they need for a task via the MCP tool registry, keeping context window sizes small.
+*   **Out-of-Repo Audits**: Agents draft execution plans (`harness_audit.md`) directly in Lore's secure directory instead of dirtying target directories.
 
 ---
 
@@ -48,7 +50,7 @@ Lore is the dedicated **memory, skill, and artifact plane** for human-agent coll
 ```
 
 1. **Context Efficiency (Dynamic Skills)**: Instead of loading massive prompts, agents query Lore's `/skills/` registry dynamically via MCP, loading only what they need for a task.
-2. **Global Agent Memory**: Decision logs (`decision-log.md`) are synced across all projects on the network. When one agent learns, all other agents learn.
+2. **Centralized Precedents**: Lessons and design guidelines are synced across all projects on the network. When one agent learns, all other agents inherit it.
 3. **Out-of-Repo Audits**: Agents write execution drafts (`harness_audit.md`) directly to Lore under `/audits/` for human review, keeping the target codebase clean.
 
 ---
@@ -84,13 +86,13 @@ Lore is the dedicated **memory, skill, and artifact plane** for human-agent coll
 
 ---
 
-## Installation Guide
+## Installation Guide (Experimental)
 
 ### Prerequisites
 - Python 3.10+
 - PostgreSQL with the `pgvector` extension
 
-### Quick Setup
+### Setup
 
 1.  **Clone and Navigate**
     ```bash
