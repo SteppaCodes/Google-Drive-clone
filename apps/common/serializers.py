@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import StarredItem, SharedItem
 
 
-class StarredItemsSerielizer(serializers.ModelSerializer):
+class StarredItemsSerializer(serializers.ModelSerializer):
     class Meta:
         model = StarredItem
         fields = '__all__'

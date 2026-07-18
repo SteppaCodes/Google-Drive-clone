@@ -1,24 +1,17 @@
-asgiref
-attrs
-Django
-django-autoslug
-django-cors-headers
-djangorestframework
-djangorestframework-simplejwt
-drf-spectacular
-inflection
-jsonschema
-jsonschema-specifications
-packaging
-pillow
-psycopg2-binary
-PyJWT
-python-decouple
-pytz
-PyYAML
-referencing
-rpds-py
-sqlparse
-tzdata
-uritemplate
+# Core Backend
+Django==5.0.6
+django-cors-headers==4.3.1
+python-decouple==3.8
+psycopg2-binary==2.9.9
+pillow==10.3.0
 
+# Django Ninja & Validation
+django-ninja==1.6.2
+pydantic==2.13.4
+email-validator==2.3.0
+
+# Legacy Django REST Framework (DRF)
+djangorestframework==3.15.1
+djangorestframework-simplejwt==5.3.1
+drf-spectacular==0.27.2
+django-autoslug==1.9.9

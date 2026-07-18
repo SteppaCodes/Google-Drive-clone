@@ -11,7 +11,7 @@ from apps.folders.models import Folder
 from apps.folders.serializers import FolderSerializer
 
 
-class AgentMixin:
+class ItemLookupMixin:
     def get_item_with_id(self, request, id=None, idb64=None):
         if idb64:
             id = force_str(urlsafe_base64_decode(idb64))
@@ -49,11 +49,11 @@ class AgentMixin:
 
         # Dynamically set url type eg ..get-shared-items/files or get-shared-items/folders
         if item_type == "File":
-            type = "files"
+            item_type = "files"
         else:
-            type = "folders"
+            item_type = "folders"
 
-        url = reverse("get-shared-item", args=[type, idb64])
+        url = reverse("get-shared-item", args=[item_type, idb64])
         link = f"{request.scheme}://{site}{url}"
 
         return link

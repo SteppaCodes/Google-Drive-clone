@@ -140,7 +140,7 @@ class ResetPasswordConfirm(APIView):
             return CustomResponse.error(message="User not found", status_code=404)
 
 
-class SetNewPassswordAPIView(APIView):
+class SetNewPasswordAPIView(APIView):
     serializer_class = SetNewPasswordSerializer
 
     @extend_schema(

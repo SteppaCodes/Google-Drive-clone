@@ -4,10 +4,10 @@ from .views import (
     StarItemAPIView,
     UnstarItemAPIView,
     StarredItemsListAPIView,
-    CreateShareLinkAPIview,
-    GetSharedItemAPIview,
-    SearchDriveAPIview,
-    UserSharedItemsListCreateAPIview,
+    CreateShareLinkAPIView,
+    GetSharedItemAPIView,
+    SearchDriveAPIView,
+    UserSharedItemsListCreateAPIView,
     SharedItemDetailAPIView,
 )
 
@@ -17,16 +17,16 @@ urlpatterns = [
     path("starred-items/", StarredItemsListAPIView.as_view()),
     path(
         "create-share-link/<id>/",
-        CreateShareLinkAPIview.as_view(),
+        CreateShareLinkAPIView.as_view(),
         name="create-share-link",
     ),
     path(
         "get-shared-item/<type>/<idb64>",
-        GetSharedItemAPIview.as_view(),
+        GetSharedItemAPIView.as_view(),
         name="get-shared-item",
     ),
-    path("search-drive/", SearchDriveAPIview.as_view()),
-    path("user-shared-items", UserSharedItemsListCreateAPIview.as_view()),
+    path("search-drive/", SearchDriveAPIView.as_view()),
+    path("user-shared-items", UserSharedItemsListCreateAPIView.as_view()),
     path(
         "user-shared-items/<id>/",
         SharedItemDetailAPIView.as_view(),

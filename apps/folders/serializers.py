@@ -23,13 +23,11 @@ class FolderSerializer(serializers.ModelSerializer):
 
     def get_starred(self, obj):
         request = self.context.get('request')
-        
         if request and request.user.is_authenticated:
-            try:
-                starred_item = StarredItem.objects.get(user=request.user, 
-                                                       content_type=ContentType.objects.get_for_model(obj), object_id=obj.id)
-                return True
-            except StarredItem.DoesNotExist:
-                return False
+            return StarredItem.objects.filter(
+                user=request.user,
+                content_type=ContentType.objects.get_for_model(obj),
+                object_id=obj.id,
+            ).exists()
         return False
 

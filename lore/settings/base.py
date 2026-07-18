@@ -25,6 +25,7 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
+    "ninja",
 ]
 
 LOCAL_APPS = [
@@ -66,7 +67,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "google_drive_clone.urls"
+ROOT_URLCONF = "lore.urls"
 
 TEMPLATES = [
     {
@@ -84,7 +85,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "google_drive_clone.wsgi.application"
+WSGI_APPLICATION = "lore.wsgi.application"
 
 
 # Database
@@ -156,9 +157,9 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "GOOGLE DRIVE CLONE API",
-    "DESCRIPTION": "A google drive clone built with django rest framework",
-    "VERSION": "1.0.0",
+    "TITLE": "LORE API",
+    "DESCRIPTION": "Collaborative file vault, skill registry, and artifact workspace for AI agents and humans.",
+    "VERSION": "0.1.0",
     "SECURITY": [
         {
             "bearerAuth": [],

@@ -7,8 +7,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import StarredItem, SharedItem
 from .response import CustomResponse
-from .mixins import AgentMixin
-from .serializers import StarredItemsSerielizer, UserSharedItemsSerializer
+from .mixins import ItemLookupMixin
+from .serializers import StarredItemsSerializer, UserSharedItemsSerializer
 from apps.files.serializers import FileSerializer
 from apps.folders.serializers import FolderSerializer
 from apps.accounts.models import User
@@ -16,7 +16,7 @@ from apps.accounts.models import User
 
 tags = ["Common Functionalities"]
 
-class StarItemAPIView(APIView, AgentMixin):
+class StarItemAPIView(APIView, ItemLookupMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -46,7 +46,7 @@ class StarItemAPIView(APIView, AgentMixin):
         return CustomResponse.success(message=_("Item starred successfully"), data=serializer.data, status_code=201)
 
 
-class UnstarItemAPIView(APIView, AgentMixin):
+class UnstarItemAPIView(APIView, ItemLookupMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -83,7 +83,7 @@ class UnstarItemAPIView(APIView, AgentMixin):
 
 
 class StarredItemsListAPIView(APIView):
-    serializer_class = StarredItemsSerielizer
+    serializer_class = StarredItemsSerializer
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -103,7 +103,7 @@ class StarredItemsListAPIView(APIView):
         return CustomResponse.success(message=_("Successfully retreive starred items"), data=serializer.data)
 
 
-class CreateShareLinkAPIview(APIView, AgentMixin):
+class CreateShareLinkAPIView(APIView, ItemLookupMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -127,7 +127,7 @@ class CreateShareLinkAPIview(APIView, AgentMixin):
         return CustomResponse.success(message=_("Share link created successfully"), data=data)
 
 
-class GetSharedItemAPIview(APIView, AgentMixin):
+class GetSharedItemAPIView(APIView, ItemLookupMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -166,7 +166,7 @@ class GetSharedItemAPIview(APIView, AgentMixin):
         return CustomResponse.success(message=_("Shared item retrieved successfully"), data=serializer.data)
 
 
-class UserSharedItemsListCreateAPIview(APIView):
+class UserSharedItemsListCreateAPIView(APIView):
     serializer_class = UserSharedItemsSerializer
     permission_classes = [IsAuthenticated]
 
@@ -217,7 +217,7 @@ class SharedItemDetailAPIView(APIView):
             return CustomResponse.error(message=_("Item not found"), status_code=404)
 
 
-class SearchDriveAPIview(APIView, AgentMixin):
+class SearchDriveAPIView(APIView, ItemLookupMixin):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(

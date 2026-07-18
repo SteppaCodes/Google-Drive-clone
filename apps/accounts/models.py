@@ -16,6 +16,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     email = models.EmailField(_('Email Address'), unique=True)
     avatar= models.ImageField(upload_to='avatars/', null=True, blank=True)
+    is_agent = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
@@ -44,3 +45,32 @@ class User(AbstractBaseUser, PermissionsMixin):
         }
 
 
+class AgentToken(models.Model):
+    """
+    Scoped API key for AI agent access.
+
+    The raw token is returned exactly once at creation time. Only its
+    SHA-256 hash is persisted; the hash is used for all subsequent
+    lookups.  ``token_prefix`` stores the first 14 characters of the
+    raw token for display identification (e.g., "lore_agent_ab12").
+    """
+
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="agent_tokens")
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True, default="")
+    token_prefix = models.CharField(max_length=20, default="")
+    description = models.TextField(blank=True)
+    scope = models.CharField(
+        max_length=20,
+        default="read_write",
+        choices=[("read_only", "Read Only"), ("read_write", "Read Write")],
+    )
+    restricted_folder = models.ForeignKey(
+        "folders.Folder", on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.description[:30]} ({self.scope})"
