@@ -75,9 +75,11 @@ lore_auth = LoreAuth()
 
 from apps.accounts.api import router as accounts_router  # noqa: E402
 from apps.files.api import router as files_router  # noqa: E402
+from apps.folders.api import router as folders_router  # noqa: E402
 
 api.add_router("/auth", accounts_router)
 api.add_router("/files", files_router, auth=lore_auth)
+api.add_router("/folders", folders_router, auth=lore_auth)
 
 
 @api.get("/hello", auth=lore_auth)
