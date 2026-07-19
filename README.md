@@ -2,25 +2,47 @@
 
 **The Artifact Plane.**
 
-Where human and AI work becomes reusable, reviewable, and permanent.
-
-`Organization` `License: MIT` `MCP`
 
 > **Work In Progress**: Lore is under active development. APIs are subject to change. Not recommended for production use until a stable release is published.
 
-Lore is a workspace where humans and AI agents create, version, relate, and build on top of **artifacts** — persistent units of work with identity, history, and provenance.
+An Artifact Plane is the infrastructure layer responsible for storing, governing, relating, and serving the artifacts produced by intelligent systems.
 
-Artifacts aren't memories. Memory systems capture facts an agent should remember. Lore captures the work an agent produces — documents, code, decisions, skills, datasets — with identity, history, review, and provenance.
+AI agents don't just generate text. They produce artifacts — research reports, source code, decisions, specifications, skills, evaluations, datasets.
+
+Existing systems primarily treat AI-generated artifacts as files. Lore treats them as first-class objects with identity, history, relationships, review, and governance — built for artifact management, not general-purpose storage.
+
+**Lore gives every artifact a stable identity.** That identity is what makes versioning, provenance, relationships, review, ownership, and governance possible.
+
+## Who It's For
+
+Lore is built for teams building AI agents, multi-agent systems, and AI-powered products that need durable, governed artifacts instead of disposable outputs — agent platform builders, AI engineering teams, and research teams who need their agents' work to survive past a single session.
 
 ## The Problem
 
-Software has databases for data. Git repositories for code. Object stores for files. AI systems need an Artifact Plane: a place where the work they produce becomes durable, reviewable, and reusable.
+Databases manage data. Git manages source code. Object stores hold files. Nothing manages the artifacts an AI agent produces along the way — a piece of research, a draft decision, a generated skill, a design — as governed, ownable, reusable objects.
 
-Right now, that place doesn't exist. AI agents produce artifacts every day (research, drafts, decisions, code) and almost none of it becomes reusable.
+So they get lost. Research gets buried in a context window. A decision made six weeks ago has to be re-derived because no one can find it. A draft gets rewritten from scratch because the last version is gone. Output piles up in a folder no human ever reviews.
 
-Work gets lost in context windows. Decisions vanish between sessions. Drafts are rewritten from scratch because no one can find the last version. Output gets dumped into folders no human ever reviews.
+## How It Fits Together
 
-Lore gives every artifact an identity that outlives the session that created it.
+```
+                Human
+                  │
+                  ▼
+            ┌────────────┐
+            │    Lore    │
+            │  Artifact  │
+            │   Plane    │
+            └─────┬──────┘
+                  │
+         ┌────────┴────────┐
+         ▼                 ▼
+   Collections       Artifact Graph
+   (navigation)      (relationships)
+                  ▲
+                  │
+              AI Agents
+```
 
 ## Human Organization + Agent Intelligence
 
@@ -49,7 +71,7 @@ Lore supports both at once.
 **Collections** give humans familiar folder-based navigation.
 **The Artifact Graph** gives agents a queryable map of dependencies and provenance.
 
-Neither replaces the other.
+Neither replaces the other — both are in service of the same artifact.
 
 ## A Day in Lore
 
@@ -89,9 +111,7 @@ Every artifact has identity, history, relationships, ownership, and lifecycle �
 
 ## Build Together
 
-A shared, self-hosted workspace where humans and agents are equal participants in producing work, not just consuming it.
-
-Lore applies ideas like version control, editorial review, and provenance to AI-generated work.
+A shared, self-hosted workspace where humans and agents are equal participants in producing and governing work, not just consuming it.
 
 - Immutable version history with line-by-line unified diffs
 - Comments, approvals, and lifecycle states
@@ -99,22 +119,16 @@ Lore applies ideas like version control, editorial review, and provenance to AI-
 
 ## Build on Previous Work
 
-The Artifact Graph connects every piece of work an agent or human has produced — research to decisions, decisions to implementations, implementations to deployments.
+The Artifact Graph connects every artifact a human or agent has produced — research to decisions, decisions to implementations, implementations to deployments.
 
 - Semantic search over artifacts and their relationships, not just filenames
 - Full provenance: where an artifact came from, who touched it, what depends on it
 
 ## Build Efficient Agents
 
-- **Skill artifact store** — skills live in Lore like any other artifact. Lore doesn't select or route skills; agents pull only the ones they need, keeping context windows small.
+- **Skill artifact store** — skills are artifacts like any other. Lore doesn't select or route them; agents pull only the ones they need, keeping context windows small.
 - **Scoped access tokens** restrict agents to specific collections.
 - **Native MCP support** for direct integration with Claude, Cursor, Windsurf, and custom agent frameworks.
-
-## Built With
-
-- Django + Django Ninja
-- PostgreSQL + pgvector
-- Model Context Protocol (MCP)
 
 ## Getting Started
 
@@ -129,6 +143,12 @@ make run
 Open `http://127.0.0.1:8000/api/docs` to view the interactive API documentation.
 
 See `CONTRIBUTING.md` for full setup and development guidelines.
+
+## Built With
+
+- Django + Django Ninja
+- PostgreSQL + pgvector
+- Model Context Protocol (MCP)
 
 ## License
 
