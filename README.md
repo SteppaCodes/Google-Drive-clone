@@ -1,41 +1,30 @@
 # Lore
 
-### The Artifact Plane for AI Agents.
+**The Artifact Plane.**
 
-> Where AI work becomes reusable knowledge.
+Where human and AI work becomes reusable, reviewable, and permanent.
 
-[![Organization](https://img.shields.io/badge/Org-The--17-blue.svg)](https://github.com/The-17)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![MCP](https://img.shields.io/badge/MCP-Native-green.svg)](https://modelcontextprotocol.io)
+`Organization` `License: MIT` `MCP`
 
-> [!WARNING]
 > **Work In Progress**: Lore is under active development. APIs are subject to change. Not recommended for production use until a stable release is published.
 
----
+Lore is a workspace where humans and AI agents create, version, relate, and build on top of **artifacts** — persistent units of work with identity, history, and provenance.
 
-Lore is an open-source workspace where humans and AI agents collaboratively create, version, relate, discover, and reuse **artifacts**.
-
-Instead of scattering work across prompts, local files, and temporary context windows, Lore gives every artifact a persistent identity, complete history, and semantic relationships.
-
-> An artifact is any persistent piece of work or knowledge — documents, code, decisions, skills, conversations, memories, datasets, and more.
-
----
+Artifacts aren't memories. Memory systems capture facts an agent should remember. Lore captures the work an agent produces — documents, code, decisions, skills, datasets — with identity, history, review, and provenance.
 
 ## The Problem
 
-AI agents create knowledge every day.
+Software has databases for data. Git repositories for code. Object stores for files. AI systems need an Artifact Plane: a place where the work they produce becomes durable, reviewable, and reusable.
 
-Almost none of it survives.
+Right now, that place doesn't exist. AI agents produce artifacts every day (research, drafts, decisions, code) and almost none of it becomes reusable.
 
-Research gets lost in context windows. Decisions vanish between sessions. Skills are rewritten from scratch. Outputs are dumped into hidden folders where no human ever reviews them.
+Work gets lost in context windows. Decisions vanish between sessions. Drafts are rewritten from scratch because no one can find the last version. Output gets dumped into folders no human ever reviews.
 
-Lore changes that.
-
----
+Lore gives every artifact an identity that outlives the session that created it.
 
 ## Human Organization + Agent Intelligence
 
-Humans think hierarchically.
+Humans think hierarchically:
 
 ```
 Projects/
@@ -44,7 +33,7 @@ Projects/
         Proposal.pdf
 ```
 
-Agents think relationally.
+Agents think relationally:
 
 ```
 Proposal
@@ -55,35 +44,31 @@ Proposal
 └── used in     → Sales Campaign
 ```
 
-Lore supports both simultaneously.
+Lore supports both at once.
 
 **Collections** give humans familiar folder-based navigation.
-
-**The Artifact Graph** gives agents a queryable map of relationships, dependencies, and provenance.
+**The Artifact Graph** gives agents a queryable map of dependencies and provenance.
 
 Neither replaces the other.
-
----
 
 ## A Day in Lore
 
 ```
-Agent researches a task.
+Agent produces a piece of work.
        │
        ▼
-Creates a Research Artifact inside a Collection.
+Saves it as a Research Artifact inside a Collection.
        │
        ▼
-Links the draft to three previous Architecture Decisions.
+Links it to three prior Architecture Decision artifacts.
        │
        ▼
 Human reviews the unified diff, leaves a comment, and Approves.
        │
        ▼
-Another agent discovers the approved knowledge six weeks later.
+Another agent discovers the approved artifact six weeks later
+and builds directly on top of it.
 ```
-
----
 
 ## What an Artifact Looks Like
 
@@ -100,47 +85,36 @@ Another agent discovers the approved knowledge six weeks later.
 └─────────────────────────────────────┘
 ```
 
-Every artifact has identity, history, relationships, ownership, and lifecycle — whether it was created by a human or an agent.
-
----
+Every artifact has identity, history, relationships, ownership, and lifecycle — whether a human or an agent created it.
 
 ## Build Together
 
-A shared, self-hosted workspace where humans and agents are equal participants.
+A shared, self-hosted workspace where humans and agents are equal participants in producing work, not just consuming it.
 
-Immutable version history with line-by-line unified diffs.
+Lore applies ideas like version control, editorial review, and provenance to AI-generated work.
 
-Comments, approvals, and lifecycle states.
-
----
+- Immutable version history with line-by-line unified diffs
+- Comments, approvals, and lifecycle states
+- Full authorship trail for every artifact, human or agent
 
 ## Build on Previous Work
 
-The Artifact Graph connects every piece of work — research to decisions, decisions to implementations, implementations to deployments.
+The Artifact Graph connects every piece of work an agent or human has produced — research to decisions, decisions to implementations, implementations to deployments.
 
-Semantic search over meaning and relationships, not just filenames.
-
-Full provenance: where it came from, who created it, what depends on it.
-
----
+- Semantic search over artifacts and their relationships, not just filenames
+- Full provenance: where an artifact came from, who touched it, what depends on it
 
 ## Build Efficient Agents
 
-Dynamic skill registry — agents retrieve only the expertise they need, keeping context windows small.
-
-Scoped access tokens restrict agents to specific collections.
-
-Native MCP support for direct integration with Claude, Cursor, Windsurf, and custom agent frameworks.
-
----
+- **Skill artifact store** — skills live in Lore like any other artifact. Lore doesn't select or route skills; agents pull only the ones they need, keeping context windows small.
+- **Scoped access tokens** restrict agents to specific collections.
+- **Native MCP support** for direct integration with Claude, Cursor, Windsurf, and custom agent frameworks.
 
 ## Built With
 
 - Django + Django Ninja
 - PostgreSQL + pgvector
 - Model Context Protocol (MCP)
-
----
 
 ## Getting Started
 
@@ -154,12 +128,8 @@ make run
 
 Open `http://127.0.0.1:8000/api/docs` to view the interactive API documentation.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup and development guidelines.
-
----
+See `CONTRIBUTING.md` for full setup and development guidelines.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-
+MIT — see `LICENSE`.
