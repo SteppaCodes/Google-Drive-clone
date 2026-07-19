@@ -1,46 +1,67 @@
 # Lore
 
-## Where AI work becomes reusable knowledge.
+### The Artifact Plane for AI Agents.
+
+> Where AI work becomes reusable knowledge.
 
 [![Organization](https://img.shields.io/badge/Org-The--17-blue.svg)](https://github.com/The-17)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Model Context Protocol](https://img.shields.io/badge/MCP-Native-green.svg)](https://modelcontextprotocol.io)
-[![Database](https://img.shields.io/badge/Database-PostgreSQL%20%2B%20pgvector-blue.svg)](https://github.com/pgvector/pgvector)
+[![MCP](https://img.shields.io/badge/MCP-Native-green.svg)](https://modelcontextprotocol.io)
 
 > [!WARNING]
-> **Work In Progress (WIP)**: Lore is under active development. The codebase is experimental and APIs are subject to change. Until a stable release tag is published, it is not recommended for production use.
+> **Work In Progress**: Lore is under active development. APIs are subject to change. Not recommended for production use until a stable release is published.
 
 ---
 
-## The Vision: The Artifact Plane
+Lore is an open-source workspace where humans and AI agents collaboratively create, version, relate, discover, and reuse **artifacts**.
 
-AI agents create knowledge every day—but almost none of it becomes reusable. Today's agents operate in isolated context windows or temporary local scratchpads. When they research, make decisions, or write code, they suffer from amnesia. They scatter outputs across filesystems, lose history, and repeatedly reload massive prompts instead of building on a persistent, shared memory.
+Instead of scattering work across prompts, local files, and temporary context windows, Lore gives every artifact a persistent identity, complete history, and semantic relationships.
 
-**Lore is the Artifact Plane** where humans and AI agents store, relate, version, discover, and collaborate on knowledge. 
+> An artifact is any persistent piece of work or knowledge — documents, code, decisions, skills, conversations, memories, datasets, and more.
 
-Humans experience Lore as a familiar, hierarchical collaborative workspace (like Google Drive). AI agents experience Lore as a rich, queryable knowledge graph. Both interact with the same underlying model where everything—documents, code, decisions, memories, and skills—is a first-class **Artifact**.
+---
+
+## The Problem
+
+AI agents create knowledge every day.
+
+Almost none of it survives.
+
+Research gets lost in context windows. Decisions vanish between sessions. Skills are rewritten from scratch. Outputs are dumped into hidden folders where no human ever reviews them.
+
+Lore changes that.
 
 ---
 
 ## Human Organization + Agent Intelligence
 
-Lore bridges how humans and agents naturally process information:
+Humans think hierarchically.
 
-*   **Humans think hierarchically**: We organize work in nested folders (**Collections**) for intuitive navigation and permission management.
-*   **Agents think relationally**: They query connections (**The Artifact Graph**)—tracing how an implementation plan was derived from a research document, what decision authorized it, and which agent executed it.
+```
+Projects/
+    Client A/
+        Research.md
+        Proposal.pdf
+```
 
-Neither model replaces the other. Lore supports both simultaneously.
+Agents think relationally.
 
----
+```
+Proposal
+├── derived from → Research
+├── references  → Brand Guidelines
+├── created by  → Strategy Agent
+├── reviewed by → Human
+└── used in     → Sales Campaign
+```
 
-## What Lore Gives You
+Lore supports both simultaneously.
 
-*   **Shared Workspace**: A secure, self-hosted workspace where humans and agents build knowledge together.
-*   **Immutable Version History**: Every agent write automatically records a new version with line-by-line unified diffs. Humans audit, approve, or revert agent edits in a visual review interface.
-*   **The Artifact Graph**: Bidirectional linking that builds a queryable semantic map of the entire workspace. Agents trace relationships, dependencies, and provenance.
-*   **Dynamic Skill Registry**: Instead of wasting context windows on massive system prompts, agents retrieve specific, versioned skill files dynamically.
-*   **Sandboxed Scoping**: Provision scoped access tokens that restrict agents to specific collections. They are sandboxed from reading or writing outside their boundary.
-*   **Semantic Search**: High-performance semantic search operating over chunks of text, allowing humans and agents to search by meaning and relationship rather than just filenames.
+**Collections** give humans familiar folder-based navigation.
+
+**The Artifact Graph** gives agents a queryable map of relationships, dependencies, and provenance.
+
+Neither replaces the other.
 
 ---
 
@@ -64,49 +85,81 @@ Another agent discovers the approved knowledge six weeks later.
 
 ---
 
-## Technical Architecture
+## What an Artifact Looks Like
 
-Lore is designed as a lean backend service providing REST and MCP APIs:
+```
+┌─────────────────────────────────────┐
+│  Research: Auth Provider Analysis   │
+│                                     │
+│  Status        Approved             │
+│  Relationships 12                   │
+│  Created By    Strategy Agent       │
+│  Reviewed By   steppa@the17.co      │
+│  Version       5                    │
+│  Collection    Projects / Auth      │
+└─────────────────────────────────────┘
+```
 
-*   **Core Services**: Built on Django with high-performance Postgres + `pgvector` for semantic indexing.
-*   **Unified Identity**: A single `Principal` registry handles human users, agent tokens, and system actions uniformly.
-*   **Model Context Protocol (MCP)**: Native stdio and HTTP/SSE JSON-RPC endpoints that expose tools directly to LLM clients.
+Every artifact has identity, history, relationships, ownership, and lifecycle — whether it was created by a human or an agent.
+
+---
+
+## Build Together
+
+A shared, self-hosted workspace where humans and agents are equal participants.
+
+Immutable version history with line-by-line unified diffs.
+
+Comments, approvals, and lifecycle states.
+
+---
+
+## Build on Previous Work
+
+The Artifact Graph connects every piece of work — research to decisions, decisions to implementations, implementations to deployments.
+
+Semantic search over meaning and relationships, not just filenames.
+
+Full provenance: where it came from, who created it, what depends on it.
+
+---
+
+## Build Efficient Agents
+
+Dynamic skill registry — agents retrieve only the expertise they need, keeping context windows small.
+
+Scoped access tokens restrict agents to specific collections.
+
+Native MCP support for direct integration with Claude, Cursor, Windsurf, and custom agent frameworks.
+
+---
+
+## Built With
+
+- Django + Django Ninja
+- PostgreSQL + pgvector
+- Model Context Protocol (MCP)
 
 ---
 
 ## Getting Started
 
-Detailed instructions for setup and contribution are maintained in:
-- [CONTRIBUTING.md](CONTRIBUTING.md) — Developer setup, style guidelines, and running tests.
-- [MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md) — Step-by-step verification flows.
+```bash
+git clone git@github.com:The-17/Lore.git
+cd Lore
+pip install -r requirements.txt
+make mig
+make run
+```
 
-### Quick Install
+Open `http://127.0.0.1:8000/api/docs` to view the interactive API documentation.
 
-1. **Clone the repository**
-   ```bash
-   git clone git@github.com:The-17/Lore.git
-   cd Lore
-   ```
-
-2. **Configure environment**
-   Create a `.env` file in the root directory:
-   ```env
-   SETTINGS=base
-   SECRET_KEY=your-django-secret-key
-   DB_ENGINE=django.db.backends.sqlite3
-   ```
-
-3. **Install & run**
-   ```bash
-   pip install -r requirements.txt
-   make mig
-   make run
-   ```
-   Open your browser to `http://127.0.0.1:8000/api/docs` to view the interactive API documentation.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup and development guidelines.
 
 ---
 
 ## License
 
-Lore is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+MIT — see [LICENSE](LICENSE).
+
 
