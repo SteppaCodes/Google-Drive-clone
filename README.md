@@ -1,6 +1,6 @@
 # Lore
 
-### Collaborative File Vault, Skill Registry, and Artifact Workspace for AI Agents and Humans
+## Where AI work becomes reusable knowledge.
 
 [![Organization](https://img.shields.io/badge/Org-The--17-blue.svg)](https://github.com/The-17)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -10,173 +10,103 @@
 > [!WARNING]
 > **Work In Progress (WIP)**: Lore is under active development. The codebase is experimental and APIs are subject to change. Until a stable release tag is published, it is not recommended for production use.
 
-**Lore** is an open-source, self-hosted workspace and knowledge vault built from the ground up for hybrid collaboration between **AI Agents** and **Humans**. It combines the permission-aware folder structures of Google Drive, the bidirectional markdown note-graphing of Obsidian, and the native tool-connectivity of the Model Context Protocol (MCP) into a single, light, and semantic-search-enabled database.
+---
+
+## The Vision: The Artifact Plane
+
+AI agents create knowledge every day—but almost none of it becomes reusable. Today's agents operate in isolated context windows or temporary local scratchpads. When they research, make decisions, or write code, they suffer from amnesia. They scatter outputs across filesystems, lose history, and repeatedly reload massive prompts instead of building on a persistent, shared memory.
+
+**Lore is the Artifact Plane** where humans and AI agents store, relate, version, discover, and collaborate on knowledge. 
+
+Humans experience Lore as a familiar, hierarchical collaborative workspace (like Google Drive). AI agents experience Lore as a rich, queryable knowledge graph. Both interact with the same underlying model where everything—documents, code, decisions, memories, and skills—is a first-class **Artifact**.
 
 ---
 
-## The Problem: The Agent Artifact and Skill Black Hole
+## Human Organization + Agent Intelligence
 
-As LLMs transition from chat sessions to autonomous software agents, they encounter a critical bottleneck in how they read reasoning rules (skills) and write deliverables (artifacts):
+Lore bridges how humans and agents naturally process information:
 
-1. **The Context Bloat Trap**: Agents load massive static system prompts or entire local directories of instruction manuals (skills) for every run. This wastes tokens, degrades LLM focus, and drives up execution costs.
-2. **Ephemeral Artifacts**: Coding and research agents dump intermediate drafts, logs, schemas, and configurations into hidden local folders or isolated Docker volumes. Humans have zero visibility, no review interface, and no control over what the agent writes.
-3. **The Blackboard Coordination Gap**: Multi-agent loops lack a secure, shared blackboard. Agents writing to the same filesystem encounter race conditions, file corruption, or permission violations.
+*   **Humans think hierarchically**: We organize work in nested folders (**Collections**) for intuitive navigation and permission management.
+*   **Agents think relationally**: They query connections (**The Artifact Graph**)—tracing how an implementation plan was derived from a research document, what decision authorized it, and which agent executed it.
 
----
-
-## The Solution: Lore
-
-Lore is the dedicated **file, skill, and artifact plane** for human-agent collaboration. It decouples the agent's reasoning guidelines and output history from the target code repository, offering:
-
-*   **A Shared Workspace**: A secure, self-hosted web vault where humans and agents co-exist as first-class users.
-*   **Version Control & Diffs**: Every agent file write automatically generates a new version with line-by-line unified diffs, giving humans a visual review layer to audit or revert agent changes.
-*   **Dynamic Skill Store**: Agents load only the specific `SKILL.md` they need for a task via the MCP tool registry, keeping context window sizes small.
-*   **Out-of-Repo Audits**: Agents draft execution plans (`harness_audit.md`) directly in Lore's secure directory instead of dirtying target directories.
+Neither model replaces the other. Lore supports both simultaneously.
 
 ---
 
-## Core Paradigm
+## What Lore Gives You
+
+*   **Shared Workspace**: A secure, self-hosted workspace where humans and agents build knowledge together.
+*   **Immutable Version History**: Every agent write automatically records a new version with line-by-line unified diffs. Humans audit, approve, or revert agent edits in a visual review interface.
+*   **The Artifact Graph**: Bidirectional linking that builds a queryable semantic map of the entire workspace. Agents trace relationships, dependencies, and provenance.
+*   **Dynamic Skill Registry**: Instead of wasting context windows on massive system prompts, agents retrieve specific, versioned skill files dynamically.
+*   **Sandboxed Scoping**: Provision scoped access tokens that restrict agents to specific collections. They are sandboxed from reading or writing outside their boundary.
+*   **Semantic Search**: High-performance semantic search operating over chunks of text, allowing humans and agents to search by meaning and relationship rather than just filenames.
+
+---
+
+## A Day in Lore
 
 ```
-  Human User  ──► [ Web Dashboard & Graph UI ] ◄──  AI Agent
-                            │
-                            ▼
-             [ Lore Django Ninja API Server ]
-                            │
-         ┌──────────────────┴──────────────────┐
-         ▼                                     ▼
-   [ pgvector RAG ]                   [ Version Diff Control ]
-   (Semantic Chunks)                  (difflib tracking)
-```
-
-1. **Context Efficiency (Dynamic Skills)**: Instead of loading massive prompts, agents query Lore's `/skills/` registry dynamically via MCP, loading only what they need for a task.
-2. **Centralized Precedents**: Lessons and design guidelines are synced across all projects on the network. When one agent learns, all other agents inherit it.
-3. **Out-of-Repo Audits**: Agents write execution drafts (`harness_audit.md`) directly to Lore under `/audits/` for human review, keeping the target codebase clean.
-
----
-
-## Key Features
-
-- **Model Context Protocol (MCP)**: Native stdio and HTTP/SSE JSON-RPC tools (`read_document`, `write_document`, `search_documents`, `list_directory`). Supports immediate mounting inside Cursor, Claude Desktop, Windsurf, or custom LangChain setups.
-- **Sandboxed Scope Tokens**: Generate revocable API tokens for agents scoped to specific folders. Agents are blocked from accessing files outside their boundary.
-- **Version Control & Diffs**: Every agent write generates a new version. The Web UI renders color-coded unified diffs (additions/deletions) for quick human auditing and rollbacks.
-- **Obsidian-Style Links**: Extracts bidirectional wiki-links (`[[target-note]]`) automatically on file saves to map out a relational visualization of agent knowledge.
-- **Semantic Search**: Text/markdown uploads are chunked and embedded in PostgreSQL using `pgvector` to return context-rich semantic passages, not giant raw files.
-
----
-
-## Architecture
-
-```
-                               ┌───────────────┐
-                               │  Human User   │
-                               └───────┬───────┘
-                                       │ Web UI & Graph view
-                                       ▼
-┌───────────────┐  MCP tools   ┌───────────────┐
-│   AI Agent    ├─────────────►│  Lore Server  │
-└───────────────┘  (JSON-RPC)  └───────┬───────┘
-                                       │
-         ┌─────────────────────────────┼─────────────────────────────┐
-         ▼                             ▼                             ▼
-  [ PostgreSQL + pgvector ]     [ Local / S3 Storage ]       [ Worker Queue ]
-  - Metadata & Embeddings       - Versioned raw files        - Chunking & embeddings
-  - Bidirectional links         - Diff history               - Link parser hook
+Agent researches a task.
+       │
+       ▼
+Creates a Research Artifact inside a Collection.
+       │
+       ▼
+Links the draft to three previous Architecture Decisions.
+       │
+       ▼
+Human reviews the unified diff, leaves a comment, and Approves.
+       │
+       ▼
+Another agent discovers the approved knowledge six weeks later.
 ```
 
 ---
 
-## Installation Guide (Experimental)
+## Technical Architecture
 
-### Prerequisites
-- Python 3.10+
-- PostgreSQL with the `pgvector` extension
+Lore is designed as a lean backend service providing REST and MCP APIs:
 
-### Setup
-
-1.  **Clone and Navigate**
-    ```bash
-    git clone git@github.com:The-17/Lore.git
-    cd Lore
-    ```
-
-2.  **Create and Activate Virtual Environment**
-    ```bash
-    python -m venv env
-    source env/bin/activate  # Windows: env\Scripts\activate
-    ```
-
-3.  **Install Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    pip install django-ninja
-    ```
-
-4.  **Configure Environment**
-    Create a `.env` file in the root directory:
-    ```env
-    SETTINGS=base
-    SECRET_KEY=your-django-secret-key
-    DB_ENGINE=django.db.backends.sqlite3
-    ```
-
-5.  **Run Migrations & Start Development Server**
-    ```bash
-    python manage.py migrate
-    python manage.py runserver
-    ```
-    Open your browser to `http://127.0.0.1:8000/api/docs` to view the interactive Swagger API documentation.
+*   **Core Services**: Built on Django with high-performance Postgres + `pgvector` for semantic indexing.
+*   **Unified Identity**: A single `Principal` registry handles human users, agent tokens, and system actions uniformly.
+*   **Model Context Protocol (MCP)**: Native stdio and HTTP/SSE JSON-RPC endpoints that expose tools directly to LLM clients.
 
 ---
 
-## Connecting Your Agent via MCP
+## Getting Started
 
-To mount Lore as a tool inside **Claude Desktop**, add the server to your `claude_desktop_config.json`:
+Detailed instructions for setup and contribution are maintained in:
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Developer setup, style guidelines, and running tests.
+- [MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md) — Step-by-step verification flows.
 
-```json
-{
-  "mcpServers": {
-    "lore": {
-      "command": "python",
-      "args": ["/path/to/Lore/manage.py", "run_mcp_server"],
-      "env": {
-        "LORE_API_TOKEN": "lore_agent_access_token_yourhash"
-      }
-    }
-  }
-}
-```
+### Quick Install
 
----
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:The-17/Lore.git
+   cd Lore
+   ```
 
-## Directory Layout
+2. **Configure environment**
+   Create a `.env` file in the root directory:
+   ```env
+   SETTINGS=base
+   SECRET_KEY=your-django-secret-key
+   DB_ENGINE=django.db.backends.sqlite3
+   ```
 
-```
-Lore/
-├── apps/
-│   ├── accounts/     # Identity, Permissions, and Scoped Agent Tokens
-│   ├── common/       # Middleware, Ninja Auth, & Base Models
-│   ├── files/        # File Ingestion, Version Control, & Comments
-│   ├── folders/      # Scoped folder structures
-│   └── __init__.py
-├── lore/
-│   ├── settings/     # Configuration suite
-│   ├── api.py        # Central Django Ninja entrypoint
-│   ├── urls.py       # Global endpoint routing
-│   ├── wsgi.py
-│   └── asgi.py
-├── manage.py
-└── requirements.txt
-```
-
----
-
-## Contributing
-
-We welcome contributions from the developer community. Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started.
+3. **Install & run**
+   ```bash
+   pip install -r requirements.txt
+   make mig
+   make run
+   ```
+   Open your browser to `http://127.0.0.1:8000/api/docs` to view the interactive API documentation.
 
 ---
 
 ## License
 
-Lore is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+Lore is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
