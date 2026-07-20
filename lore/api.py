@@ -21,10 +21,12 @@ from apps.accounts.auth import lore_auth
 from apps.accounts.api import router as accounts_router  # noqa: E402
 from apps.collections.api import router as collections_router  # noqa: E402
 from apps.artifacts.api import router as artifacts_router  # noqa: E402
+from apps.mcp.api import router as mcp_router  # noqa: E402
 
 api.add_router("/auth", accounts_router)
 api.add_router("/collections", collections_router, auth=lore_auth)
 api.add_router("/artifacts", artifacts_router, auth=lore_auth)
+api.add_router("/mcp", mcp_router, auth=lore_auth)
 
 
 @api.get("/hello", auth=lore_auth)

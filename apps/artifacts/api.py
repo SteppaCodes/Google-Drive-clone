@@ -39,6 +39,7 @@ from .schemas import (
     RelationshipResponseSchema,
 )
 from .utils import compute_diff
+from .wiki_links import extract_and_sync_wiki_links
 
 router = Router(tags=["Artifacts & Graph"])
 
@@ -81,23 +82,30 @@ def create_artifact(request, data: ArtifactCreateSchema):
         lifecycle_state=data.lifecycle_state or "draft",
     )
 
+    text_to_scan = ""
     if data.type == "skill":
+        text_to_scan = data.skill_md_content or ""
         SkillArtifact.objects.create(
             artifact=artifact,
-            skill_md_content=data.skill_md_content or "",
+            skill_md_content=text_to_scan,
         )
     elif data.type == "decision":
+        text_to_scan = (data.decision_text or "") + "\n" + (data.rationale or "")
         DecisionArtifact.objects.create(
             artifact=artifact,
             decision_text=data.decision_text or "",
             rationale=data.rationale or "",
         )
     elif data.type == "memory":
+        text_to_scan = data.memory_content or ""
         MemoryArtifact.objects.create(
             artifact=artifact,
-            content=data.memory_content or "",
+            content=text_to_scan,
             scope=data.memory_scope or "",
         )
+
+    if text_to_scan:
+        extract_and_sync_wiki_links(artifact, text_to_scan, principal)
 
     return 201, ArtifactResponseSchema.from_model(artifact)
 
@@ -171,6 +179,12 @@ def upload_document(
         doc.file.save(file.name, file, save=False)
         doc.save()
 
+        try:
+            text_str = new_content.decode("utf-8")
+            extract_and_sync_wiki_links(existing_artifact, text_str, principal)
+        except Exception:
+            pass
+
         return 201, ArtifactResponseSchema.from_model(existing_artifact)
 
     # Create new artifact
@@ -188,6 +202,12 @@ def upload_document(
         file=file,
         format=file.name.split(".")[-1] if "." in file.name else "markdown",
     )
+
+    try:
+        text_str = new_content.decode("utf-8")
+        extract_and_sync_wiki_links(artifact, text_str, principal)
+    except Exception:
+        pass
 
     return 201, ArtifactResponseSchema.from_model(artifact)
 
@@ -470,3 +490,45 @@ def post_comment(request, artifact_id: UUID, body: str):
         body=body,
     )
     return 201, CommentResponseSchema.from_model(comment)
+
+
+# --- Dynamic Skill Registry ---
+
+@router.get("/skills/list", response=list[ArtifactResponseSchema])
+def list_skills(request):
+    """
+    Dynamic Skill Registry: List all available skills across all collections
+    accessible to the caller.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill")
+    qs = scope_artifacts_queryset(qs, request)
+    return [ArtifactResponseSchema.from_model(a) for a in qs]
+
+
+@router.get("/skills/{title}", response={200: dict, 404: dict})
+def fetch_skill(request, title: str):
+    """
+    Fetch a skill by title for dynamic agent prompt hydration.
+    Atomically increments usage_count on the SkillArtifact.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill", title__iexact=title)
+    qs = scope_artifacts_queryset(qs, request)
+    artifact = get_object_or_404(qs)
+
+    if hasattr(artifact, "skill"):
+        skill = artifact.skill
+        skill.usage_count += 1
+        skill.save(update_fields=["usage_count"])
+        md_content = skill.skill_md_content
+    else:
+        md_content = ""
+
+    return 200, {
+        "id": str(artifact.id),
+        "title": artifact.title,
+        "collection_id": str(artifact.collection_id) if artifact.collection_id else None,
+        "usage_count": artifact.skill.usage_count if hasattr(artifact, "skill") else 0,
+        "content": md_content,
+        "lifecycle_state": artifact.lifecycle_state,
+        "updated_at": artifact.updated_at.isoformat(),
+    }
