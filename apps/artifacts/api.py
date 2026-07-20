@@ -224,9 +224,9 @@ def get_artifact(request, artifact_id: UUID):
     return 200, ArtifactResponseSchema.from_model(artifact)
 
 
-@router.patch("/{artifact_id}", response={200: ArtifactResponseSchema, 403: dict, 404: dict})
+@router.patch("/{artifact_id}", response={200: ArtifactResponseSchema, 403: dict, 404: dict, 409: dict})
 def update_artifact(request, artifact_id: UUID, data: ArtifactUpdateSchema):
-    """Update metadata and contents of an existing artifact."""
+    """Update metadata and contents of an existing artifact with optional OCC version check."""
     qs = Artifact.objects.filter(deleted_at__isnull=True)
     qs = scope_artifacts_queryset(qs, request)
     artifact = get_object_or_404(qs, id=artifact_id)
@@ -234,6 +234,13 @@ def update_artifact(request, artifact_id: UUID, data: ArtifactUpdateSchema):
     principal = getattr(request.user, "principal", None)
     if artifact.locked_by and artifact.locked_by != principal:
         return 403, {"message": f"Artifact is locked by {artifact.locked_by}"}
+
+    # Optimistic Concurrency Control (OCC) Check
+    current_ver = artifact.current_version.version_number if artifact.current_version else 1
+    if data.expected_version_number is not None and data.expected_version_number != current_ver:
+        return 409, {
+            "message": f"Artifact version mismatch: current version is {current_ver}, expected {data.expected_version_number}"
+        }
 
     if data.title:
         artifact.title = data.title
@@ -324,7 +331,7 @@ def unlock_artifact(request, artifact_id: UUID):
     return 200, ArtifactResponseSchema.from_model(artifact)
 
 
-# --- Version History & Download ---
+# --- Version History & Rollback ---
 
 @router.get("/{artifact_id}/versions", response=list[ArtifactVersionResponseSchema])
 def list_artifact_versions(request, artifact_id: UUID):
@@ -334,6 +341,52 @@ def list_artifact_versions(request, artifact_id: UUID):
 
     versions = artifact.versions.select_related("created_by").order_by("-version_number")
     return [ArtifactVersionResponseSchema.from_model(v) for v in versions]
+
+
+@router.post("/{artifact_id}/revert", response={201: ArtifactResponseSchema, 400: dict, 403: dict, 404: dict})
+def revert_artifact(request, artifact_id: UUID, target_version_number: int, commit_message: str = ""):
+    """
+    Revert an artifact to a historical version.
+    This action creates a NEW append-only ArtifactVersion with the historical content
+    and records a diff against the current state.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True)
+    qs = scope_artifacts_queryset(qs, request)
+    artifact = get_object_or_404(qs, id=artifact_id)
+
+    principal = getattr(request.user, "principal", None)
+    if artifact.locked_by and artifact.locked_by != principal:
+        return 403, {"message": f"Artifact is locked by {artifact.locked_by}"}
+
+    target_version = artifact.versions.filter(version_number=target_version_number).first()
+    if not target_version:
+        return 404, {"message": f"Version {target_version_number} not found for this artifact"}
+
+    if artifact.type == "document" and hasattr(artifact, "document"):
+        doc = artifact.document
+        current_content = doc.file.read()
+        doc.file.seek(0)
+
+        target_content = target_version.file_instance.read()
+        target_version.file_instance.seek(0)
+
+        new_num = artifact.versions.count() + 1
+        new_version = ArtifactVersion.objects.create(
+            artifact=artifact,
+            version_number=new_num,
+            file_instance=ContentFile(target_content, name=f"v{new_num}_revert_to_v{target_version_number}_{artifact.title}"),
+            diff_content=compute_diff(current_content, target_content),
+            created_by=principal,
+            commit_message=commit_message or f"Reverted artifact to version {target_version_number}",
+        )
+
+        doc.file.save(artifact.title, ContentFile(target_content), save=False)
+        doc.save()
+
+        artifact.current_version = new_version
+        artifact.save()
+
+    return 201, ArtifactResponseSchema.from_model(artifact)
 
 
 @router.get("/{artifact_id}/download")

@@ -21,6 +21,7 @@ class ArtifactCreateSchema(BaseModel):
 class ArtifactUpdateSchema(BaseModel):
     title: Optional[str] = None
     lifecycle_state: Optional[str] = None
+    expected_version_number: Optional[int] = None  # OCC check
     
     # Subtype updates
     skill_md_content: Optional[str] = None
@@ -29,6 +30,11 @@ class ArtifactUpdateSchema(BaseModel):
     decision_status: Optional[str] = None
     memory_content: Optional[str] = None
     memory_scope: Optional[str] = None
+
+
+class ArtifactRevertSchema(BaseModel):
+    target_version_number: int
+    commit_message: Optional[str] = None
 
 
 class ArtifactResponseSchema(BaseModel):
