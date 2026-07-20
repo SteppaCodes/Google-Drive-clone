@@ -38,6 +38,7 @@ from .schemas import (
     RelationshipCreateSchema,
     RelationshipResponseSchema,
 )
+from .chunking import chunk_text_content
 from .utils import compute_diff
 from .wiki_links import extract_and_sync_wiki_links
 
@@ -79,6 +80,7 @@ def create_artifact(request, data: ArtifactCreateSchema):
         owner=principal,
         created_by=principal,
         collection=collection,
+        inherit_permissions=(collection is not None),
         lifecycle_state=data.lifecycle_state or "draft",
     )
 
@@ -104,8 +106,21 @@ def create_artifact(request, data: ArtifactCreateSchema):
             scope=data.memory_scope or "",
         )
 
+    # Create initial version snapshot
+    version = ArtifactVersion.objects.create(
+        artifact=artifact,
+        version_number=1,
+        file_instance=ContentFile(text_to_scan.encode("utf-8"), name=f"v1_{artifact.title}.md"),
+        diff_content="",
+        created_by=principal,
+        commit_message="Initial creation",
+    )
+    artifact.current_version = version
+    artifact.save(update_fields=["current_version"])
+
     if text_to_scan:
         extract_and_sync_wiki_links(artifact, text_to_scan, principal)
+        chunk_text_content(artifact, version, text_to_scan)
 
     return 201, ArtifactResponseSchema.from_model(artifact)
 
@@ -182,6 +197,7 @@ def upload_document(
         try:
             text_str = new_content.decode("utf-8")
             extract_and_sync_wiki_links(existing_artifact, text_str, principal)
+            chunk_text_content(existing_artifact, version, text_str)
         except Exception:
             pass
 
@@ -194,18 +210,31 @@ def upload_document(
         owner=principal,
         created_by=principal,
         collection=collection,
+        inherit_permissions=(collection is not None),
         lifecycle_state=lifecycle_state,
     )
 
-    DocumentArtifact.objects.create(
+    doc = DocumentArtifact.objects.create(
         artifact=artifact,
         file=file,
         format=file.name.split(".")[-1] if "." in file.name else "markdown",
     )
 
+    version = ArtifactVersion.objects.create(
+        artifact=artifact,
+        version_number=1,
+        file_instance=ContentFile(new_content, name=f"v1_{file.name}"),
+        diff_content="",
+        created_by=principal,
+        commit_message="Initial document upload",
+    )
+    artifact.current_version = version
+    artifact.save(update_fields=["current_version"])
+
     try:
         text_str = new_content.decode("utf-8")
         extract_and_sync_wiki_links(artifact, text_str, principal)
+        chunk_text_content(artifact, version, text_str)
     except Exception:
         pass
 
@@ -532,3 +561,36 @@ def fetch_skill(request, title: str):
         "lifecycle_state": artifact.lifecycle_state,
         "updated_at": artifact.updated_at.isoformat(),
     }
+
+
+# --- Vector & Chunk RAG Search ---
+
+@router.get("/chunks/search", response=list[dict])
+def search_chunks(request, query: str = "", limit: int = 10):
+    """
+    Search across granular ArtifactChunk text blocks for targeted RAG context.
+    Returns matching snippets with chunk index, version number, and artifact provenance.
+    """
+    if not query:
+        return []
+
+    from .models import ArtifactChunk
+
+    allowed_artifacts = scope_artifacts_queryset(Artifact.objects.filter(deleted_at__isnull=True), request)
+    chunks = ArtifactChunk.objects.filter(
+        artifact__in=allowed_artifacts,
+        text__icontains=query,
+    ).select_related("artifact", "version")[:limit]
+
+    results = []
+    for chunk in chunks:
+        results.append({
+            "chunk_id": str(chunk.id),
+            "artifact_id": str(chunk.artifact.id),
+            "artifact_title": chunk.artifact.title,
+            "artifact_type": chunk.artifact.type,
+            "version_number": chunk.version.version_number,
+            "chunk_index": chunk.chunk_index,
+            "text": chunk.text,
+        })
+    return results

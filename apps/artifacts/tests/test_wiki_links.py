@@ -7,7 +7,7 @@ from apps.artifacts.wiki_links import extract_and_sync_wiki_links
 
 class WikiLinksTestCase(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(email="test@lore.local", password="password123")
+        self.user = User.objects.create_user(email="test@lore.com", password="password123", first_name="Wiki", last_name="Test")
         self.principal = Principal.objects.create(kind="user", user=self.user)
 
         self.target_art = Artifact.objects.create(
@@ -15,6 +15,7 @@ class WikiLinksTestCase(TestCase):
             title="Django Ninja Patterns",
             owner=self.principal,
             created_by=self.principal,
+            inherit_permissions=False,
         )
         SkillArtifact.objects.create(artifact=self.target_art, skill_md_content="Skill content")
 
@@ -24,6 +25,7 @@ class WikiLinksTestCase(TestCase):
             title="Backend Deployment",
             owner=self.principal,
             created_by=self.principal,
+            inherit_permissions=False,
         )
 
         content = "Always follow [[Django Ninja Patterns]] when creating new API endpoints."

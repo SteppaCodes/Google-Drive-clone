@@ -154,6 +154,7 @@ def mcp_write_artifact(
         owner=principal,
         created_by=principal,
         collection=parent_collection,
+        inherit_permissions=(parent_collection is not None),
         lifecycle_state="draft",
     )
 
