@@ -8,9 +8,9 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
-from lore.api import lore_auth
+from .auth import lore_auth
 
-from .models import AgentToken, Invite, User
+from .models import AgentToken, Invite, User, Principal
 from .schemas import (
     AgentTokenCreateResponseSchema,
     AgentTokenCreateSchema,
@@ -63,6 +63,12 @@ def register(request, data: RegisterSchema):
         last_name=data.last_name,
         password=data.password,
         is_workspace_admin=True,
+    )
+    # Create Principal for user
+    Principal.objects.create(
+        kind=Principal.Kind.USER,
+        display_name=user.full_name,
+        user=user,
     )
     tokens = user.tokens()
     return 201, {
@@ -250,6 +256,13 @@ def claim_invite(request, token: str, data: InviteClaimSchema):
         password=data.password,
     )
 
+    # Create Principal for user
+    Principal.objects.create(
+        kind=Principal.Kind.USER,
+        display_name=user.full_name,
+        user=user,
+    )
+
     invite.claimed = True
     invite.claimed_at = timezone.now()
     invite.save(update_fields=["claimed", "claimed_at"])
@@ -282,13 +295,20 @@ def create_agent_token(request, data: AgentTokenCreateSchema):
     if data.expires_in_days:
         expires_at = timezone.now() + timedelta(days=data.expires_in_days)
 
+    # Create Principal for agent token
+    principal = Principal.objects.create(
+        kind=Principal.Kind.AGENT_TOKEN,
+        display_name=f"Agent: {data.description[:30]}",
+    )
+
     agent_token = AgentToken.objects.create(
         user=request.user,
+        principal=principal,
         token_hash=token_hash,
         token_prefix=token_prefix,
         description=data.description,
         scope=data.scope,
-        restricted_folder_id=data.restricted_folder_id,
+        restricted_collection_id=data.restricted_collection_id,
         expires_at=expires_at,
     )
 

@@ -24,7 +24,7 @@ class TokenResponseSchema(BaseModel):
 class AgentTokenCreateSchema(BaseModel):
     description: str = Field(..., max_length=500)
     scope: str = Field("read_write", max_length=20)
-    restricted_folder_id: UUID | None = None
+    restricted_collection_id: UUID | None = None
     expires_in_days: int | None = Field(90, ge=1, le=365)
 
 
@@ -35,7 +35,7 @@ class AgentTokenCreateResponseSchema(BaseModel):
     token: str
     description: str
     scope: str
-    restricted_folder_id: UUID | None = None
+    restricted_collection_id: UUID | None = None
     expires_at: datetime | None = None
     created_at: datetime
 
@@ -50,7 +50,7 @@ class AgentTokenResponseSchema(BaseModel):
     token_prefix: str
     description: str
     scope: str
-    restricted_folder_id: UUID | None = None
+    restricted_collection_id: UUID | None = None
     expires_at: datetime | None = None
     created_at: datetime
 

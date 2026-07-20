@@ -4,11 +4,22 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.translation import gettext_lazy as _
+from rest_framework import serializers
 
-from apps.files.models import File
-from apps.files.serializers import FileSerializer
-from apps.folders.models import Folder
-from apps.folders.serializers import FolderSerializer
+from apps.artifacts.models import Artifact
+from apps.collections.models import Collection
+
+
+class ArtifactDRFSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Artifact
+        fields = '__all__'
+
+
+class CollectionDRFSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Collection
+        fields = '__all__'
 
 
 class ItemLookupMixin:
@@ -16,29 +27,33 @@ class ItemLookupMixin:
         if idb64:
             id = force_str(urlsafe_base64_decode(idb64))
         try:
-            item = File.objects.get(id=id)
+            item = Artifact.objects.get(id=id)
             return item
-        except File.DoesNotExist:
+        except Artifact.DoesNotExist:
             try:
-                item = Folder.objects.get(id=id)
+                item = Collection.objects.get(id=id)
                 return item
-            except Folder.DoesNotExist:
+            except Collection.DoesNotExist:
                 return None
 
     def search_item(self, request, query):
         try:
-            files = File.objects.filter(name__icontains=query, owner=request.user)
-            folders = Folder.objects.filter(name__icontains=query, owner=request.user)
-            return files, folders
+            # We filter by owner. Since owner is now a Principal, we resolve request.user.principal
+            principal = getattr(request.user, "principal", None)
+            if not principal:
+                return Artifact.objects.none(), Collection.objects.none()
+            artifacts = Artifact.objects.filter(title__icontains=query, owner=principal)
+            collections = Collection.objects.filter(name__icontains=query, owner=principal)
+            return artifacts, collections
         except ObjectDoesNotExist:
             return None, None
 
     def serialize(self, item, many=False):
         request = getattr(self, "request", None)
-        if isinstance(item, File):
-            return FileSerializer(item, many=many, context={"request": request})
-        elif isinstance(item, Folder):
-            return FolderSerializer(item, many=many, context={"request": request})
+        if isinstance(item, Artifact):
+            return ArtifactDRFSerializer(item, many=many, context={"request": request})
+        elif isinstance(item, Collection):
+            return CollectionDRFSerializer(item, many=many, context={"request": request})
         else:
             raise ValueError(_("Invalid item"))
 
@@ -47,8 +62,8 @@ class ItemLookupMixin:
         idb64 = self.encode(item.id)
         item_type = item._meta.model.__name__ # Get the model name
 
-        # Dynamically set url type eg ..get-shared-items/files or get-shared-items/folders
-        item_type = "files" if item_type == "File" else "folders"
+        # Dynamically set url type
+        item_type = "artifacts" if item_type == "Artifact" else "collections"
 
         url = reverse("get-shared-item", args=[item_type, idb64])
         link = f"{request.scheme}://{site}{url}"
@@ -62,6 +77,3 @@ class ItemLookupMixin:
     def decode(self, idb64):
         id = force_str(urlsafe_base64_decode(idb64))
         return id
-
-
-

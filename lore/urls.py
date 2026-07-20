@@ -9,9 +9,6 @@ from lore.api import api
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api.urls),
-    path("api/auth/", include("apps.accounts.urls")),
-    path("api/", include("apps.files.urls")),
-    path("api/", include("apps.folders.urls")),
     path("api/", include("apps.common.urls")),
 
     path("api/schema", SpectacularAPIView.as_view(), name="api_schema"),

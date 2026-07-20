@@ -46,6 +46,39 @@ class User(AbstractBaseUser, PermissionsMixin):
         }
 
 
+class Principal(models.Model):
+    """
+    Unified identity for all actors in Lore.
+
+    Every entity that can own, create, modify, or be granted permissions
+    to an artifact resolves to a single Principal row.  This eliminates
+    polymorphic FKs throughout the schema — ``Artifact.owner``,
+    ``ArtifactRelationship.created_by``, ``ArtifactPermission.principal``
+    all point here.
+
+    Principals are created directly in the registration, invite-claim,
+    and agent-token-create views — not via signals.
+    """
+
+    class Kind(models.TextChoices):
+        USER = "user", "User"
+        AGENT_TOKEN = "agent_token", "Agent Token"
+
+    id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    display_name = models.CharField(max_length=255)
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, null=True, blank=True,
+        related_name="principal",
+    )
+    # agent_token FK is set below AgentToken definition to avoid
+    # forward-reference issues within the same file.
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.display_name} ({self.kind})"
+
+
 class AgentToken(models.Model):
     """
     Scoped API key for AI agent access.
@@ -58,6 +91,10 @@ class AgentToken(models.Model):
 
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="agent_tokens")
+    principal = models.OneToOneField(
+        Principal, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="agent_token",
+    )
     token_hash = models.CharField(max_length=64, unique=True, db_index=True, default="")
     token_prefix = models.CharField(max_length=20, default="")
     description = models.TextField(blank=True)
@@ -66,8 +103,8 @@ class AgentToken(models.Model):
         default="read_write",
         choices=[("read_only", "Read Only"), ("read_write", "Read Write")],
     )
-    restricted_folder = models.ForeignKey(
-        "folders.Folder", on_delete=models.SET_NULL, null=True, blank=True,
+    restricted_collection = models.ForeignKey(
+        "collections.Collection", on_delete=models.SET_NULL, null=True, blank=True,
     )
     expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -107,3 +144,4 @@ class Invite(models.Model):
     def generate_token():
         """Generate a cryptographically secure URL-safe invite token."""
         return secrets.token_urlsafe(32)
+

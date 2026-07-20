@@ -5,10 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
-from apps.files.serializers import FileSerializer
-from apps.folders.serializers import FolderSerializer
-
-from .mixins import ItemLookupMixin
+from .mixins import ItemLookupMixin, ArtifactDRFSerializer, CollectionDRFSerializer
 from .models import SharedItem, StarredItem
 from .response import CustomResponse
 from .serializers import StarredItemsSerializer, UserSharedItemsSerializer
@@ -235,11 +232,11 @@ class SearchDriveAPIView(APIView, ItemLookupMixin):
         obj = self.search_item(request, query)
         files, folders = obj[0], obj[1]
 
-        file_serializer = FileSerializer(files, many=True)
-        folder_serializer = FolderSerializer(folders, many=True)
+        file_serializer = ArtifactDRFSerializer(files, many=True)
+        folder_serializer = CollectionDRFSerializer(folders, many=True)
         data = {
-            "files": file_serializer.data,
-            "folders":folder_serializer.data
+            "artifacts": file_serializer.data,
+            "collections": folder_serializer.data
         }
 
         return CustomResponse.success(message=_("Search successful"), data=data)
