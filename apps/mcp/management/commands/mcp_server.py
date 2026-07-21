@@ -32,7 +32,9 @@ class Command(BaseCommand):
         request = None
 
         if token_str:
-            tok = AgentToken.objects.filter(token=token_str).first()
+            import hashlib
+            tok_hash = hashlib.sha256(token_str.encode()).hexdigest()
+            tok = AgentToken.objects.filter(token_hash=tok_hash).first()
             if tok:
                 request = MockRequest(principal=tok.principal, agent_token=tok)
 

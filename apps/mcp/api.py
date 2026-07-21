@@ -1,5 +1,5 @@
 from typing import Any, Dict
-from ninja import Router
+from ninja import Body, Router
 
 from apps.mcp.tools import (
     mcp_create_relationship,
