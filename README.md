@@ -17,14 +17,10 @@
 
 ## What is Lore?
 
-An Artifact Plane is the infrastructure layer responsible for storing, governing, relating, and serving the artifacts produced by intelligent systems.
+AI agents are producing more work than teams can manage.
+Research, specifications, code, decisions, evaluations, and designs are scattered across chats, repositories, and cloud drives with little history, provenance, or review.
 
-AI agents don't just generate text. They produce artifacts: research reports, source code, decisions, specifications, skills, evaluations, and datasets.
-
-Existing systems primarily treat AI-generated artifacts as disposable text logs or flat files. Lore treats them as first-class objects with stable identity, immutable history, graph relationships, human review workflows, and access governance.
-
-**Lore gives every artifact a stable identity.** That identity makes versioning, provenance, relationships, review, ownership, and governance possible.
-
+Lore is the Artifact Plane—a system that gives every AI-generated artifact a durable identity, making versioning, collaboration, governance, and reuse possible.
 ---
 
 ## The Problem
