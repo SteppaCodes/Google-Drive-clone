@@ -1,3 +1,5 @@
+<div align="center">
+
 # Lore
 
 **The Artifact Plane for Humans and AI Agents.**
@@ -7,7 +9,9 @@
 [![MCP Server](https://img.shields.io/badge/MCP-Protocol_Ready-8A2BE2?style=for-the-badge)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-[Quickstart](docs/quickstart.md) | [Tutorial](docs/tutorial.md) | [Architecture](docs/architecture.md) | [Contributing](docs/contributing.md)
+[Quickstart](docs/quickstart.md) • [Tutorial](docs/tutorial.md) • [Architecture](docs/architecture.md) • [Contributing](docs/contributing.md)
+
+</div>
 
 ---
 
