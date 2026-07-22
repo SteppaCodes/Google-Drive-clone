@@ -1,39 +1,48 @@
-<div align="center">
+<p align="center">
+  <h1 align="center">Lore</h1>
+  <p align="center"><i>Give AI-generated work a durable identity.</i></p>
+</p>
 
-# Lore
+<p align="center">
+  <img alt="Django" src="https://img.shields.io/badge/Django-Ninja-092E20">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-Server-blueviolet">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-green">
+</p>
 
-**The Artifact Plane for Humans and AI Agents.**
-
-[![Django](https://img.shields.io/badge/Django-5.0+-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
-[![Django Ninja](https://img.shields.io/badge/Django_Ninja-FastAPI_for_Django-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://django-ninja.dev)
-[![MCP Server](https://img.shields.io/badge/MCP-Protocol_Ready-8A2BE2?style=for-the-badge)](https://modelcontextprotocol.io)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-
-[Quickstart](docs/quickstart.md) • [Tutorial](docs/tutorial.md) • [Architecture](docs/architecture.md) • [Contributing](docs/contributing.md)
-
-</div>
+<p align="center">
+  <a href="#quickstart-local-development">Quickstart</a> •
+  <a href="#documentation">Tutorial</a> •
+  <a href="#how-it-fits-together">Architecture</a> •
+  <a href="#self-hosted-by-default-hosted-when-you-want-it">Self-Hosting & Hosted</a> •
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
 ---
 
-## What is Lore?
+AI agents are producing more work than teams can manage — research, specifications, code, architecture decisions, evaluations, generated skills. Today that work is scattered across chat windows, hidden agent folders, and Docker volumes with no history, no review, and no reliable way to tell what's current.
 
-AI agents are producing more work than teams can manage.
-Research, specifications, code, decisions, evaluations, and designs are scattered across chats, repositories, and cloud drives with little history, provenance, or review.
+A week later, nobody can answer simple questions:
 
-Lore is the Artifact Plane—a system that gives every AI-generated artifact a durable identity, making versioning, collaboration, governance, and reuse possible.
----
+- Which version of this spec did we actually approve?
+- Who reviewed this before it shipped?
+- What does this decision depend on, and what depends on it?
+- Is the agent about to redo work it already did last month?
+
+As agents become capable of producing substantial work — not just answering questions — they generate research, code, specifications, and decisions at a pace existing tools weren't designed to manage.
+
+**Lore gives every AI-generated artifact a durable identity** — versioned, reviewable, related to everything that produced it or depends on it, and owned by someone.
+
+Without identity, an artifact is just another file. With it, the same artifact can have versions, relationships, approvals, ownership, and history.
 
 ## The Problem
 
-Databases manage structured data. Git manages source code. Object stores hold static files. Nothing manages the artifacts an AI agent produces along the way: a piece of research, a draft decision, a generated skill, or a system specification: as governed, ownable, reusable objects.
+Existing systems store AI-generated work as documents, files, chat logs, or repository content. They weren't designed to manage that work as first-class artifacts with identity, provenance, review, and relationships. As a result:
 
-Because there is no dedicated artifact plane:
-* Research gets buried inside an ephemeral context window.
-* Architecture decisions made weeks ago must be re-derived because outputs were discarded.
-* Generated code or draft proposals pile up in hidden folders no human ever reviews.
-* System prompts balloon with static instructions because agents cannot dynamically fetch skill artifacts.
+- Research gets buried inside an ephemeral context window.
+- Architecture decisions made weeks ago get re-derived because the original output was discarded.
+- Generated code or draft proposals pile up in hidden folders no human ever reviews.
 
----
+We call the infrastructure that solves this an **Artifact Plane**. It does for AI-generated work what Git did for source code: gives every artifact a stable identity so it can be versioned, related, reviewed, and reused.
 
 ## How It Fits Together
 
@@ -56,67 +65,21 @@ Because there is no dedicated artifact plane:
               AI Agents
 ```
 
-## Human Organization + Agent Intelligence
+### Human Organization + Agent Intelligence
 
-Humans think hierarchically:
-
-```
-Projects/
-    Client A/
-        Research.md
-        Proposal.pdf
-```
-
-Agents think relationally:
+Humans think hierarchically (`Projects/Client A/Research.md`). Agents think relationally:
 
 ```
 Proposal
 ├── derived_from → Research
 ├── references   → Brand Guidelines
 ├── created_by   → Strategy Agent
-├── reviewed_by  → Human Admin
 └── used_in      → Sales Campaign
 ```
 
-Lore supports both at once:
-* **Collections** give humans familiar folder-based navigation and database-backed permission inheritance.
-* **The Artifact Graph** gives agents a queryable map of dependencies and provenance.
+**Collections** give humans familiar folder navigation and permission inheritance. **The Artifact Graph** gives agents a queryable map of dependencies and provenance. Neither replaces the other — both operate on the same underlying artifact.
 
-Neither replaces the other. Both operate on the same underlying artifact.
-
----
-
-## Core Capabilities
-
-### Bring Your Own Backend (BYOB)
-Lore is built for self-hosting. Keep 100% of your data on your own infrastructure. Lore backends run via Docker or Python environments, providing configurable CORS settings (`LORE_FRONTEND_URL`) so static web applications can connect securely to your private API.
-
-### Model Context Protocol (MCP) Server
-Native JSON-RPC server running over **stdio** (`python manage.py mcp_server`) and **HTTP/SSE** (`/api/mcp/`). Connect Claude Desktop, Cursor, Windsurf, or custom agent frameworks using 7 core tools:
-* `search_artifacts`: Search artifacts by query string across accessible collections.
-* `read_artifact`: Retrieve full metadata, version number, and content.
-* `write_artifact`: Create or update artifacts with automatic version diffs and wiki-link extraction.
-* `revert_artifact`: Revert an artifact to a previous version snapshot in an append-only audit trail.
-* `list_collection`: List sub-collections and artifacts inside a scope.
-* `create_relationship`: Create typed graph edges between artifacts.
-* `list_skills`: List registered skill artifacts accessible to the caller.
-
-### Dynamic Skill Registry
-Agents fetch versioned instructions on-demand via `/api/artifacts/skills/{title}` rather than cluttering system prompts. Tracks skill `usage_count` automatically on read.
-
-### Automatic Wiki-Link Graph Relations
-Text content containing `[[Artifact Title]]` syntax automatically parses matching workspace artifacts on save and creates directed `references` relationship edges in the Artifact Graph.
-
-### Optimistic Concurrency Control & Version Rollbacks
-* **OCC Conflict Guard**: Detects concurrent edits between swarm agents via `expected_version_number` (`409 Conflict`).
-* **Append-Only Rollbacks**: Revert an artifact to any historical version snapshot without destroying audit history (`POST /api/artifacts/{id}/revert`).
-
-### Incremental Vector & Text RAG Chunking
-Sliding-window text chunker (`ArtifactChunk`) indexes version snapshots automatically, providing granular RAG snippet search (`/api/artifacts/chunks/search`).
-
----
-
-## A Day in Lore
+## What This Looks Like Day to Day
 
 ```
 Agent produces a piece of research.
@@ -135,24 +98,32 @@ Another agent discovers the approved artifact weeks later
 and builds directly on top of it.
 ```
 
----
-
-## What an Artifact Looks Like
-
 ```
 ┌──────────────────────────────────────────┐
-│  Research: Auth Provider Analysis        │
-│                                          │
-│  Status        Approved                  │
-│  Relationships 12 Graph Edges            │
-│  Created By    Strategy Agent (Principal) │
-│  Reviewed By   admin@lore.com (Principal) │
-│  Version       v5 (Line Diffs Recorded)   │
-│  Collection    Projects / Auth           │
+│  Research: Auth Provider Analysis         │
+│                                            │
+│  Status        Approved                   │
+│  Relationships 12 Graph Edges              │
+│  Created By    Strategy Agent (Principal)  │
+│  Reviewed By   admin@lore.com (Principal)  │
+│  Version       v5 (Line Diffs Recorded)    │
+│  Collection    Projects / Auth             │
 └──────────────────────────────────────────┘
 ```
 
----
+## Core Capabilities
+
+**Govern.** Every write creates a new version with line-by-line diffs, so any change can be audited or reverted. Concurrent edits between agents are caught before they overwrite each other. Lifecycle states (draft → review → approved → published → deprecated) let you require human approval before an artifact counts as trusted, current work.
+
+**Relate.** `[[Wiki-Link]]` syntax is parsed automatically into a real relationship graph — query "what does this depend on" or "what supersedes this" directly. Semantic search returns the relevant passage, not the whole file.
+
+**Integrate.** A native MCP server connects Claude Desktop, Cursor, Windsurf, or any custom agent framework out of the box. Skills are versioned artifacts agents fetch on demand instead of bloating a static system prompt. Agent tokens are sandboxed to specific collections. Full tool and API reference in the [docs](docs/architecture.md).
+
+## Self-Hosted by Default, Hosted When You Want It
+
+Lore is MIT-licensed and built self-hosted first, not as a crippled preview of a better hosted product. Run it on your own infrastructure (Docker or plain Python) and keep 100% of your data under your own control — `LORE_FRONTEND_URL` and configurable CORS let any frontend or agent framework connect to your private API without exposing it publicly.
+
+A managed Lore Cloud offering may come later for teams who'd rather not run Postgres, pgvector, and a worker queue themselves — but it will sell operational convenience, not features withheld from self-hosting. Your data isn't locked in either way: export and self-host at any time.
 
 ## Quickstart (Local Development)
 
@@ -172,11 +143,9 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Open Swagger UI documentation at `http://127.0.0.1:8000/api/docs`.
+Open the Swagger UI documentation at `http://127.0.0.1:8000/api/docs`.
 
-For detailed setup instructions, read the **[Quickstart Guide](docs/quickstart.md)**.
-
----
+For detailed setup instructions, read the [Quickstart Guide](docs/quickstart.md).
 
 ## Connecting Claude Desktop (MCP Stdio)
 
@@ -194,25 +163,20 @@ Issue an agent token and add Lore to your `claude_desktop_config.json`:
 }
 ```
 
----
-
 ## Documentation
 
-* **[Quickstart Guide](docs/quickstart.md)**: Local installation, environment configuration, and MCP setup.
-* **[Step-by-Step Tutorial](docs/tutorial.md)**: Working with collections, wiki-links, version diffs, and skill registry.
-* **[System Architecture](docs/architecture.md)**: Technical design, `Principal` identity model, and BYOB specs.
-* **[Contributor Guide](docs/contributing.md)**: Development setup, coding guidelines, and PR workflow.
-
----
+- [Quickstart Guide](docs/quickstart.md) — local installation, environment configuration, and MCP setup.
+- [Step-by-Step Tutorial](docs/tutorial.md) — working with collections, wiki-links, version diffs, and the skill registry.
+- [System Architecture](docs/architecture.md) — technical design, the Principal identity model, and BYOB specs.
+- [Contributor Guide](CONTRIBUTING.md) — development setup, coding guidelines, and PR workflow.
 
 ## Built With
 
-* Django + Django Ninja
-* PostgreSQL + pgvector (SQLite supported for development)
-* Model Context Protocol (MCP)
-
----
+- Django + Django Ninja
+- PostgreSQL + pgvector (SQLite supported for development)
+- Model Context Protocol (MCP)
 
 ## License
 
-Lore is open-source software licensed under the **[MIT License](LICENSE)**.
+Lore is open-source software licensed under the [MIT License](LICENSE).
+
