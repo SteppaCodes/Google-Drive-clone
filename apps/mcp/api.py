@@ -1,5 +1,5 @@
-from typing import Any, Dict
-from ninja import Body, Router
+from typing import Any, Dict, Optional
+from ninja import Router, Schema
 
 from apps.mcp.tools import (
     mcp_create_relationship,
@@ -12,6 +12,13 @@ from apps.mcp.tools import (
 )
 
 router = Router(tags=["Model Context Protocol (MCP)"])
+
+
+class MCPPayloadSchema(Schema):
+    jsonrpc: str = "2.0"
+    id: Optional[Any] = None
+    method: str
+    params: Optional[Dict[str, Any]] = None
 
 MCP_TOOLS_SPEC = [
     {
@@ -99,13 +106,13 @@ def get_mcp_tools(request):
 
 
 @router.post("/", response=dict)
-def handle_mcp_jsonrpc(request, payload: Dict[str, Any]):
+def handle_mcp_jsonrpc(request, payload: MCPPayloadSchema):
     """
     JSON-RPC 2.0 endpoint handling MCP tool execution and discovery.
     """
-    method = payload.get("method")
-    rpc_id = payload.get("id")
-    params = payload.get("params", {})
+    method = payload.method
+    rpc_id = payload.id
+    params = payload.params or {}
 
     if method == "tools/list":
         return {

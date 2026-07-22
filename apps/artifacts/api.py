@@ -264,6 +264,81 @@ def list_artifacts(request, collection_id: UUID | None = None, type: str | None 
     return [ArtifactResponseSchema.from_model(a) for a in qs]
 
 
+# --- Dynamic Skill Registry ---
+
+@router.get("/skills/list", response=list[ArtifactResponseSchema])
+def list_skills(request):
+    """
+    Dynamic Skill Registry: List all available skills across all collections
+    accessible to the caller.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill")
+    qs = scope_artifacts_queryset(qs, request)
+    return [ArtifactResponseSchema.from_model(a) for a in qs]
+
+
+@router.get("/skills/{title}", response={200: dict, 404: dict})
+def fetch_skill(request, title: str):
+    """
+    Fetch a skill by title for dynamic agent prompt hydration.
+    Atomically increments usage_count on the SkillArtifact.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill", title__iexact=title)
+    qs = scope_artifacts_queryset(qs, request)
+    artifact = get_object_or_404(qs)
+
+    if hasattr(artifact, "skill"):
+        skill = artifact.skill
+        skill.usage_count += 1
+        skill.save(update_fields=["usage_count"])
+        md_content = skill.skill_md_content
+    else:
+        md_content = ""
+
+    return 200, {
+        "id": str(artifact.id),
+        "title": artifact.title,
+        "collection_id": str(artifact.collection_id) if artifact.collection_id else None,
+        "usage_count": artifact.skill.usage_count if hasattr(artifact, "skill") else 0,
+        "content": md_content,
+        "lifecycle_state": artifact.lifecycle_state,
+        "updated_at": artifact.updated_at.isoformat(),
+    }
+
+
+# --- Vector & Chunk RAG Search ---
+
+@router.get("/chunks/search", response=list[dict])
+def search_chunks(request, query: str = "", limit: int = 10):
+    """
+    Search across granular ArtifactChunk text blocks for targeted RAG context.
+    Returns matching snippets with chunk index, version number, and artifact provenance.
+    """
+    if not query:
+        return []
+
+    from .models import ArtifactChunk
+
+    allowed_artifacts = scope_artifacts_queryset(Artifact.objects.filter(deleted_at__isnull=True), request)
+    chunks = ArtifactChunk.objects.filter(
+        artifact__in=allowed_artifacts,
+        text__icontains=query,
+    ).select_related("artifact", "version")[:limit]
+
+    results = []
+    for chunk in chunks:
+        results.append({
+            "chunk_id": str(chunk.id),
+            "artifact_id": str(chunk.artifact.id),
+            "artifact_title": chunk.artifact.title,
+            "artifact_type": chunk.artifact.type,
+            "version_number": chunk.version.version_number,
+            "chunk_index": chunk.chunk_index,
+            "text": chunk.text,
+        })
+    return results
+
+
 @router.get("/{artifact_id}", response={200: ArtifactResponseSchema, 404: dict})
 def get_artifact(request, artifact_id: UUID):
     """Retrieve details for a specific artifact."""
@@ -519,78 +594,3 @@ def post_comment(request, artifact_id: UUID, body: str):
         body=body,
     )
     return 201, CommentResponseSchema.from_model(comment)
-
-
-# --- Dynamic Skill Registry ---
-
-@router.get("/skills/list", response=list[ArtifactResponseSchema])
-def list_skills(request):
-    """
-    Dynamic Skill Registry: List all available skills across all collections
-    accessible to the caller.
-    """
-    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill")
-    qs = scope_artifacts_queryset(qs, request)
-    return [ArtifactResponseSchema.from_model(a) for a in qs]
-
-
-@router.get("/skills/{title}", response={200: dict, 404: dict})
-def fetch_skill(request, title: str):
-    """
-    Fetch a skill by title for dynamic agent prompt hydration.
-    Atomically increments usage_count on the SkillArtifact.
-    """
-    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill", title__iexact=title)
-    qs = scope_artifacts_queryset(qs, request)
-    artifact = get_object_or_404(qs)
-
-    if hasattr(artifact, "skill"):
-        skill = artifact.skill
-        skill.usage_count += 1
-        skill.save(update_fields=["usage_count"])
-        md_content = skill.skill_md_content
-    else:
-        md_content = ""
-
-    return 200, {
-        "id": str(artifact.id),
-        "title": artifact.title,
-        "collection_id": str(artifact.collection_id) if artifact.collection_id else None,
-        "usage_count": artifact.skill.usage_count if hasattr(artifact, "skill") else 0,
-        "content": md_content,
-        "lifecycle_state": artifact.lifecycle_state,
-        "updated_at": artifact.updated_at.isoformat(),
-    }
-
-
-# --- Vector & Chunk RAG Search ---
-
-@router.get("/chunks/search", response=list[dict])
-def search_chunks(request, query: str = "", limit: int = 10):
-    """
-    Search across granular ArtifactChunk text blocks for targeted RAG context.
-    Returns matching snippets with chunk index, version number, and artifact provenance.
-    """
-    if not query:
-        return []
-
-    from .models import ArtifactChunk
-
-    allowed_artifacts = scope_artifacts_queryset(Artifact.objects.filter(deleted_at__isnull=True), request)
-    chunks = ArtifactChunk.objects.filter(
-        artifact__in=allowed_artifacts,
-        text__icontains=query,
-    ).select_related("artifact", "version")[:limit]
-
-    results = []
-    for chunk in chunks:
-        results.append({
-            "chunk_id": str(chunk.id),
-            "artifact_id": str(chunk.artifact.id),
-            "artifact_title": chunk.artifact.title,
-            "artifact_type": chunk.artifact.type,
-            "version_number": chunk.version.version_number,
-            "chunk_index": chunk.chunk_index,
-            "text": chunk.text,
-        })
-    return results
