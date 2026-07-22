@@ -1,56 +1,160 @@
-<div align="center">
+# Lore
 
-# Lore — The Artifact Plane for AI Agents & Humans
-
-**Where AI agent outputs become reusable, versioned, relational knowledge.**
+**The Artifact Plane for Humans and AI Agents.**
 
 [![Django](https://img.shields.io/badge/Django-5.0+-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
 [![Django Ninja](https://img.shields.io/badge/Django_Ninja-FastAPI_for_Django-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://django-ninja.dev)
 [![MCP Server](https://img.shields.io/badge/MCP-Protocol_Ready-8A2BE2?style=for-the-badge)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-[Quickstart](docs/quickstart.md) • [Tutorial](docs/tutorial.md) • [Architecture](docs/architecture.md) • [Contributing](docs/contributing.md)
-
-</div>
+[Quickstart](docs/quickstart.md) | [Tutorial](docs/tutorial.md) | [Architecture](docs/architecture.md) | [Contributing](docs/contributing.md)
 
 ---
 
-## 💡 What is Lore?
+## What is Lore?
 
-AI agents create knowledge every day — research, decisions, skills, code, plans — but almost none of it survives:
-1. **Amnesia & Context Bloat**: Agents reload massive static system prompts for every session, burning tokens and forgetting past decisions.
-2. **Scatter & Isolation**: Agent outputs are dumped into hidden scratchpads, temporary docker volumes, or buried in prompt logs where no human ever reviews them.
-3. **Flat Filesystem Mismatch**: Filesystems group work by rigid hierarchy, whereas agents think relationally (tracing how a decision authorized a proposal derived from research).
+An Artifact Plane is the infrastructure layer responsible for storing, governing, relating, and serving the artifacts produced by intelligent systems.
 
-**Lore is the Artifact Plane** where humans and AI agents store, version, relate, discover, and collaborate on knowledge.
+AI agents don't just generate text. They produce artifacts: research reports, source code, decisions, specifications, skills, evaluations, and datasets.
+
+Existing systems primarily treat AI-generated artifacts as disposable text logs or flat files. Lore treats them as first-class objects with stable identity, immutable history, graph relationships, human review workflows, and access governance.
+
+**Lore gives every artifact a stable identity.** That identity makes versioning, provenance, relationships, review, ownership, and governance possible.
 
 ---
 
-## ✨ Key Features
+## The Problem
 
-### 🏢 Bring Your Own Backend (BYOB)
-Keep 100% of your data on your own infrastructure. Lore backends are self-hostable via Docker, offering flexible CORS controls (`LORE_FRONTEND_URL`) so web applications can connect securely to your private API.
+Databases manage structured data. Git manages source code. Object stores hold static files. Nothing manages the artifacts an AI agent produces along the way: a piece of research, a draft decision, a generated skill, or a system specification: as governed, ownable, reusable objects.
 
-### 🤖 Model Context Protocol (MCP) Server
-Native JSON-RPC server over both **stdio** (`python manage.py mcp_server`) and **HTTP/SSE** (`/api/mcp/`). Connect Claude Desktop, Cursor, Windsurf, or custom AI agents in under 60 seconds with 7 pre-built tools:
-* `search_artifacts` • `read_artifact` • `write_artifact` • `revert_artifact` • `list_collection` • `create_relationship` • `list_skills`
+Because there is no dedicated artifact plane:
+* Research gets buried inside an ephemeral context window.
+* Architecture decisions made weeks ago must be re-derived because outputs were discarded.
+* Generated code or draft proposals pile up in hidden folders no human ever reviews.
+* System prompts balloon with static instructions because agents cannot dynamically fetch skill artifacts.
 
-### ⚡ Dynamic Skill Registry
-Agents fetch versioned instructions on-demand via `/api/artifacts/skills/{title}` rather than cluttering system prompts. Tracks skill `usage_count` automatically.
+---
 
-### 🕸️ The Artifact Graph & Wiki-Link Auto-Extraction
-Text containing `[[Artifact Title]]` syntax automatically parses matching workspace artifacts on save and creates queryable `references` relationship edges.
+## How It Fits Together
 
-### 🛡️ Optimistic Concurrency Control (OCC) & Append-Only Rollbacks
-* **OCC**: Detects concurrent edits between swarm agents via `expected_version_number` (`409 Conflict`).
-* **Rollbacks**: Revert an artifact to any historical version snapshot without destroying audit history (`POST /api/artifacts/{id}/revert`).
+```
+                Human
+                  │
+                  ▼
+            ┌────────────┐
+            │    Lore    │
+            │  Artifact  │
+            │   Plane    │
+            └─────┬──────┘
+                  │
+         ┌────────┴────────┐
+         ▼                 ▼
+   Collections       Artifact Graph
+   (navigation)      (relationships)
+                  ▲
+                  │
+              AI Agents
+```
 
-### 🔍 Incremental Vector & Text RAG Chunking
+## Human Organization + Agent Intelligence
+
+Humans think hierarchically:
+
+```
+Projects/
+    Client A/
+        Research.md
+        Proposal.pdf
+```
+
+Agents think relationally:
+
+```
+Proposal
+├── derived_from → Research
+├── references   → Brand Guidelines
+├── created_by   → Strategy Agent
+├── reviewed_by  → Human Admin
+└── used_in      → Sales Campaign
+```
+
+Lore supports both at once:
+* **Collections** give humans familiar folder-based navigation and database-backed permission inheritance.
+* **The Artifact Graph** gives agents a queryable map of dependencies and provenance.
+
+Neither replaces the other. Both operate on the same underlying artifact.
+
+---
+
+## Core Capabilities
+
+### Bring Your Own Backend (BYOB)
+Lore is built for self-hosting. Keep 100% of your data on your own infrastructure. Lore backends run via Docker or Python environments, providing configurable CORS settings (`LORE_FRONTEND_URL`) so static web applications can connect securely to your private API.
+
+### Model Context Protocol (MCP) Server
+Native JSON-RPC server running over **stdio** (`python manage.py mcp_server`) and **HTTP/SSE** (`/api/mcp/`). Connect Claude Desktop, Cursor, Windsurf, or custom agent frameworks using 7 core tools:
+* `search_artifacts`: Search artifacts by query string across accessible collections.
+* `read_artifact`: Retrieve full metadata, version number, and content.
+* `write_artifact`: Create or update artifacts with automatic version diffs and wiki-link extraction.
+* `revert_artifact`: Revert an artifact to a previous version snapshot in an append-only audit trail.
+* `list_collection`: List sub-collections and artifacts inside a scope.
+* `create_relationship`: Create typed graph edges between artifacts.
+* `list_skills`: List registered skill artifacts accessible to the caller.
+
+### Dynamic Skill Registry
+Agents fetch versioned instructions on-demand via `/api/artifacts/skills/{title}` rather than cluttering system prompts. Tracks skill `usage_count` automatically on read.
+
+### Automatic Wiki-Link Graph Relations
+Text content containing `[[Artifact Title]]` syntax automatically parses matching workspace artifacts on save and creates directed `references` relationship edges in the Artifact Graph.
+
+### Optimistic Concurrency Control & Version Rollbacks
+* **OCC Conflict Guard**: Detects concurrent edits between swarm agents via `expected_version_number` (`409 Conflict`).
+* **Append-Only Rollbacks**: Revert an artifact to any historical version snapshot without destroying audit history (`POST /api/artifacts/{id}/revert`).
+
+### Incremental Vector & Text RAG Chunking
 Sliding-window text chunker (`ArtifactChunk`) indexes version snapshots automatically, providing granular RAG snippet search (`/api/artifacts/chunks/search`).
 
 ---
 
-## ⚡ Quickstart (Local Development)
+## A Day in Lore
+
+```
+Agent produces a piece of research.
+       │
+       ▼
+Saves it as a Research Artifact inside a Collection.
+       │
+       ▼
+Links it to three prior Architecture Decision artifacts via [[Wiki-Links]].
+       │
+       ▼
+Human reviews the line-by-line diff, leaves a comment, and Approves.
+       │
+       ▼
+Another agent discovers the approved artifact weeks later
+and builds directly on top of it.
+```
+
+---
+
+## What an Artifact Looks Like
+
+```
+┌──────────────────────────────────────────┐
+│  Research: Auth Provider Analysis        │
+│                                          │
+│  Status        Approved                  │
+│  Relationships 12 Graph Edges            │
+│  Created By    Strategy Agent (Principal) │
+│  Reviewed By   admin@lore.com (Principal) │
+│  Version       v5 (Line Diffs Recorded)   │
+│  Collection    Projects / Auth           │
+└──────────────────────────────────────────┘
+```
+
+---
+
+## Quickstart (Local Development)
 
 ```bash
 # 1. Clone the repository
@@ -68,13 +172,13 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Open Swagger UI documentation at **`http://127.0.0.1:8000/api/docs`**.
+Open Swagger UI documentation at `http://127.0.0.1:8000/api/docs`.
 
 For detailed setup instructions, read the **[Quickstart Guide](docs/quickstart.md)**.
 
 ---
 
-## 🔌 Connecting Claude Desktop (MCP Stdio)
+## Connecting Claude Desktop (MCP Stdio)
 
 Issue an agent token and add Lore to your `claude_desktop_config.json`:
 
@@ -92,15 +196,23 @@ Issue an agent token and add Lore to your `claude_desktop_config.json`:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-* 🚀 **[Quickstart Guide](docs/quickstart.md)**: Local installation, environment configuration, and MCP setup.
-* 📖 **[Step-by-Step Tutorial](docs/tutorial.md)**: Working with collections, wiki-links, version diffs, and skill registry.
-* 🏛️ **[System Architecture](docs/architecture.md)**: Technical design, `Principal` identity model, and BYOB specs.
-* 🤝 **[Contributor Guide](docs/contributing.md)**: Development setup, coding guidelines, and PR workflow.
+* **[Quickstart Guide](docs/quickstart.md)**: Local installation, environment configuration, and MCP setup.
+* **[Step-by-Step Tutorial](docs/tutorial.md)**: Working with collections, wiki-links, version diffs, and skill registry.
+* **[System Architecture](docs/architecture.md)**: Technical design, `Principal` identity model, and BYOB specs.
+* **[Contributor Guide](docs/contributing.md)**: Development setup, coding guidelines, and PR workflow.
 
 ---
 
-## 📄 License
+## Built With
+
+* Django + Django Ninja
+* PostgreSQL + pgvector (SQLite supported for development)
+* Model Context Protocol (MCP)
+
+---
+
+## License
 
 Lore is open-source software licensed under the **[MIT License](LICENSE)**.
