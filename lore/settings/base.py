@@ -41,6 +41,15 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 AUTH_USER_MODEL = "accounts.user"
 
+# CORS Configuration for BYOB (Bring Your Own Backend)
+LORE_FRONTEND_URLS = config(
+    "LORE_FRONTEND_URL",
+    default="http://localhost:5173,http://localhost:3000,https://app.lore.dev",
+)
+CORS_ALLOWED_ORIGINS = [url.strip() for url in LORE_FRONTEND_URLS.split(",") if url.strip()]
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=True, cast=bool)
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_HEADERS = (
     "x-requested-with",
     "content-type",
@@ -50,11 +59,15 @@ CORS_ALLOW_HEADERS = (
     "accept-encoding",
     "access-control-allow-origin",
     "content-disposition",
+    "x-lore-version",
+    "expected-version-number",
 )
 
-CORS_ALLOW_ALL_ORIGINS=True
-
-CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = (
+    "content-disposition",
+    "x-lore-version",
+    "authorization",
+)
 
 CORS_ALLOW_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
 
