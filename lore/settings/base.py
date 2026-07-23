@@ -23,7 +23,6 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
-    "drf_spectacular",
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
     "ninja",
@@ -47,7 +46,7 @@ LORE_FRONTEND_URLS = config(
     default="http://localhost:5173,http://localhost:3000,https://app.lore.dev",
 )
 CORS_ALLOWED_ORIGINS = [url.strip() for url in LORE_FRONTEND_URLS.split(",") if url.strip()]
-CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=True, cast=bool)
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=False, cast=bool)
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = (
@@ -168,26 +167,4 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "NON_FIELD_ERROR_KEYS": "error",
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-}
-
-SPECTACULAR_SETTINGS = {
-    "TITLE": "LORE API",
-    "DESCRIPTION": "Collaborative file vault, skill registry, and artifact workspace for AI agents and humans.",
-    "VERSION": "0.1.0",
-    "SECURITY": [
-        {
-            "bearerAuth": [],
-        }
-    ],
-    "TAGS": [
-        {"name": "Auth", "description": "Authentication endpoints"},
-        {"name": "Files", "description": "Manage Files endpoints"},
-        {"name": "Folders", "description": "Manage Folders endpoints"},
-        {"name": "Comments", "description": "File comments CRUD endpoints"},
-        {
-            "name": "Common Functionalities",
-            "description": "Common features for files and folders",
-        },
-    ],
 }

@@ -27,10 +27,21 @@ def unsubscribe_events(q: Queue) -> None:
         _subscribers.remove(q)
 
 
-def publish_artifact_event(event_type: str, artifact_id: str, payload: Dict[str, Any] = None) -> None:
+def publish_artifact_event(
+    event_type: str,
+    artifact_id: str,
+    payload: Dict[str, Any] = None,
+    owner_id: str = None,
+) -> None:
     """
     Publish an event to all active SSE streaming clients and MCP subscribers.
-    
+
+    ``owner_id`` is the string id of the artifact owner's Principal. It is
+    used by SSE consumers to filter delivery so a subscriber only receives
+    events for artifacts it is authorized to see. Events published without
+    an ``owner_id`` are treated as unscoped and are NOT delivered to any
+    principal-scoped subscriber (fail closed).
+
     Event Types:
     - `artifact.created`: New artifact created.
     - `artifact.updated`: Artifact content or title updated.
@@ -43,6 +54,7 @@ def publish_artifact_event(event_type: str, artifact_id: str, payload: Dict[str,
     event_data = {
         "event": event_type,
         "artifact_id": str(artifact_id),
+        "owner_id": str(owner_id) if owner_id is not None else None,
         "payload": payload,
     }
 

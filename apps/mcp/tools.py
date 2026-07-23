@@ -130,22 +130,14 @@ def mcp_write_artifact(
         if existing.locked_by and existing.locked_by != principal:
             return {"error": f"Artifact is locked by {existing.locked_by}."}
 
-        if existing.type == "skill" and hasattr(existing, "skill"):
-            existing.skill.skill_md_content = content
-            existing.skill.save()
-        elif existing.type == "decision" and hasattr(existing, "decision"):
-            existing.decision.decision_text = content
-            existing.decision.save()
-        elif existing.type == "memory" and hasattr(existing, "memory"):
-            existing.memory.content = content
-            existing.memory.save()
+        from apps.artifacts.services import create_initial_version, update_artifact_version, revert_artifact_to_version
+        version = update_artifact_version(existing, content, principal, commit_message="MCP tool update")
 
-        extract_and_sync_wiki_links(existing, content, principal)
         return {
             "id": str(existing.id),
             "title": existing.title,
             "status": "updated",
-            "version_number": current_ver,
+            "version_number": version.version_number,
         }
 
     artifact = Artifact.objects.create(
@@ -165,7 +157,9 @@ def mcp_write_artifact(
     elif type == "memory":
         MemoryArtifact.objects.create(artifact=artifact, content=content)
 
-    extract_and_sync_wiki_links(artifact, content, principal)
+    from apps.artifacts.services import create_initial_version, update_artifact_version, revert_artifact_to_version
+    create_initial_version(artifact, content, principal)
+
     return {
         "id": str(artifact.id),
         "title": artifact.title,
@@ -192,28 +186,15 @@ def mcp_revert_artifact(request, artifact_id: str, target_version_number: int, c
     if art.locked_by and art.locked_by != principal:
         return {"error": f"Artifact is locked by {art.locked_by}."}
 
-    if art.type == "document" and hasattr(art, "document"):
-        doc = art.document
-        current_content = doc.file.read()
-        doc.file.seek(0)
-        target_content = target_ver.file_instance.read()
-        target_ver.file_instance.seek(0)
+    from apps.artifacts.services import revert_artifact_to_version
+    new_version = revert_artifact_to_version(
+        artifact=art,
+        target_version=target_ver,
+        created_by=principal,
+        commit_message=commit_message or f"Reverted to version {target_version_number}",
+    )
 
-        new_num = art.versions.count() + 1
-        new_v = ArtifactVersion.objects.create(
-            artifact=art,
-            version_number=new_num,
-            file_instance=ContentFile(target_content, name=f"v{new_num}_revert_{art.title}"),
-            diff_content=compute_diff(current_content, target_content),
-            created_by=principal,
-            commit_message=commit_message or f"Reverted to version {target_version_number}",
-        )
-        doc.file.save(art.title, ContentFile(target_content), save=False)
-        doc.save()
-        art.current_version = new_v
-        art.save()
-
-    return {"status": "reverted", "artifact_id": str(art.id), "new_version_number": art.versions.count()}
+    return {"status": "reverted", "artifact_id": str(art.id), "new_version_number": new_version.version_number}
 
 
 def mcp_list_collection(request, collection_id: Optional[str] = None) -> dict[str, Any]:

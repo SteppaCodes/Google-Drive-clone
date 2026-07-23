@@ -24,6 +24,7 @@ class LifecycleState(models.TextChoices):
     DRAFT = "draft", "Draft"
     REVIEW = "review", "Review"
     APPROVED = "approved", "Approved"
+    REJECTED = "rejected", "Rejected"
     PUBLISHED = "published", "Published"
     DEPRECATED = "deprecated", "Deprecated"
     ARCHIVED = "archived", "Archived"

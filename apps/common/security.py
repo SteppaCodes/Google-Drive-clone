@@ -64,31 +64,5 @@ def scope_artifacts_queryset(queryset: QuerySet, request) -> QuerySet:
     return queryset.none()
 
 
-# --- Backward-compatible aliases for legacy apps.files code ---
 
-def get_allowed_folders_for_request(request) -> list:
-    """Alias for get_allowed_collections_for_request."""
-    return get_allowed_collections_for_request(request)
-
-
-def scope_folders_queryset(queryset: QuerySet, request) -> QuerySet:
-    """Alias for scope_collections_queryset."""
-    return scope_collections_queryset(queryset, request)
-
-
-def scope_files_queryset(queryset: QuerySet, request) -> QuerySet:
-    """
-    Applies security scoping to a File queryset (legacy).
-    """
-    user = request.user
-    if not user or not user.is_authenticated:
-        return queryset.none()
-
-    agent_token = getattr(request, 'agent_token', None)
-    if agent_token and agent_token.restricted_collection:
-        allowed_collections = get_allowed_collections_for_request(request)
-        allowed_ids = [c.id for c in allowed_collections]
-        return queryset.filter(folder_id__in=allowed_ids)
-
-    return queryset.filter(owner=user)
 

@@ -106,6 +106,10 @@ class AgentToken(models.Model):
     restricted_collection = models.ForeignKey(
         "collections.Collection", on_delete=models.SET_NULL, null=True, blank=True,
     )
+    can_auto_approve = models.BooleanField(
+        default=False,
+        help_text=_("Allows pre-reviewed pipeline agents to create artifacts directly in approved or published states."),
+    )
     expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

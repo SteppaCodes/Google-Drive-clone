@@ -26,8 +26,9 @@ def extract_and_sync_wiki_links(artifact: "Artifact", text_content: str, created
 
     from apps.artifacts.models import Artifact, ArtifactRelationship
 
-    # Find target artifacts by title (excluding self)
+    # Find target artifacts by title within the same owner workspace (excluding self)
     target_artifacts = Artifact.objects.filter(
+        owner=artifact.owner,
         title__in=titles,
         deleted_at__isnull=True,
     ).exclude(id=artifact.id)

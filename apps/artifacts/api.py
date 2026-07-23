@@ -1,10 +1,11 @@
 import json
 import time
 from datetime import datetime
+from queue import Empty
 from uuid import UUID
 
 from django.core.files.base import ContentFile
-from django.http import FileResponse, StreamingHttpResponse
+from django.http import FileResponse, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import File, Router, UploadedFile
@@ -28,6 +29,7 @@ from .models import (
     ArtifactVersion,
     DecisionArtifact,
     DocumentArtifact,
+    LifecycleState,
     MemoryArtifact,
     PermissionRole,
     RelationType,
@@ -47,6 +49,30 @@ from .wiki_links import extract_and_sync_wiki_links
 
 router = Router(tags=["Artifacts & Graph"])
 
+def _initial_lifecycle_state(requested: str, request) -> str:
+    """
+    Determines initial lifecycle state based on actor capability:
+    1. Human Users: Can assign any valid lifecycle state (Draft, Review, Approved, Published).
+    2. Trusted Agents (can_auto_approve=True): Can assign any valid state.
+    3. Untrusted / Background Agents (can_auto_approve=False): Clamped to Draft or Review.
+    """
+    agent_token = getattr(request, "agent_token", None)
+    if agent_token is None or getattr(agent_token, "can_auto_approve", False):
+        valid_states = {
+            LifecycleState.DRAFT,
+            LifecycleState.REVIEW,
+            LifecycleState.APPROVED,
+            LifecycleState.PUBLISHED,
+            LifecycleState.ARCHIVED,
+        }
+        if requested in valid_states:
+            return requested
+        return LifecycleState.DRAFT
+
+    if requested in {LifecycleState.DRAFT, LifecycleState.REVIEW}:
+        return requested
+    return LifecycleState.DRAFT
+
 
 # --- Server-Sent Events (SSE) Real-Time Stream ---
 
@@ -55,7 +81,19 @@ def event_stream(request):
     """
     Server-Sent Events (SSE) stream delivering real-time artifact updates,
     state changes, and diff patch notifications to Web UI clients and AI Agents.
+
+    Events are filtered by the subscribing principal: a client only receives
+    events for artifacts owned by its own Principal, preventing cross-tenant
+    leakage of titles, diffs, and lifecycle state.
     """
+    principal = getattr(request, "principal", None)
+    if principal is None:
+        return HttpResponse(
+            '{"message": "Authentication required for the event stream."}',
+            status=401, content_type="application/json",
+        )
+    principal_id = str(principal.id)
+
     def event_generator():
         q = subscribe_events()
         try:
@@ -63,8 +101,11 @@ def event_stream(request):
             while True:
                 try:
                     event_data = q.get(timeout=25)
+                    # Only deliver events the subscriber is authorized to see.
+                    if event_data.get("owner_id") != principal_id:
+                        continue
                     yield f"event: {event_data['event']}\ndata: {json.dumps(event_data)}\n\n"
-                except Exception:
+                except Empty:
                     # Ping keepalive every 25 seconds
                     yield "event: ping\ndata: {\"ping\": true}\n\n"
         finally:
@@ -112,7 +153,7 @@ def create_artifact(request, data: ArtifactCreateSchema):
         created_by=principal,
         collection=collection,
         inherit_permissions=(collection is not None),
-        lifecycle_state=data.lifecycle_state or "draft",
+        lifecycle_state=_initial_lifecycle_state(data.lifecycle_state or "draft", request),
     )
 
     text_to_scan = ""
@@ -137,27 +178,16 @@ def create_artifact(request, data: ArtifactCreateSchema):
             scope=data.memory_scope or "",
         )
 
-    # Create initial version snapshot
-    version = ArtifactVersion.objects.create(
-        artifact=artifact,
-        version_number=1,
-        file_instance=ContentFile(text_to_scan.encode("utf-8"), name=f"v1_{artifact.title}.md"),
-        diff_content="",
-        created_by=principal,
-        commit_message="Initial creation",
-    )
-    artifact.current_version = version
-    artifact.save(update_fields=["current_version"])
-
-    if text_to_scan:
-        extract_and_sync_wiki_links(artifact, text_to_scan, principal)
-        chunk_text_content(artifact, version, text_to_scan)
+    # Create initial version snapshot via unified service
+    from apps.artifacts.services import create_initial_version, update_artifact_version, revert_artifact_to_version
+    create_initial_version(artifact, text_to_scan, principal)
 
     # Publish real-time event
     publish_artifact_event(
         event_type="artifact.created",
         artifact_id=str(artifact.id),
         payload={"title": artifact.title, "type": artifact.type, "state": artifact.lifecycle_state},
+        owner_id=str(artifact.owner_id),
     )
 
     return 201, ArtifactResponseSchema.from_model(artifact)
@@ -226,7 +256,7 @@ def upload_document(
         )
 
         existing_artifact.current_version = version
-        existing_artifact.lifecycle_state = lifecycle_state
+        existing_artifact.lifecycle_state = _initial_lifecycle_state(lifecycle_state, request)
         existing_artifact.save()
 
         # Overwrite file
@@ -244,7 +274,8 @@ def upload_document(
         publish_artifact_event(
             event_type="artifact.updated",
             artifact_id=str(existing_artifact.id),
-            payload={"version_number": version_num, "diff": diff_patch, "state": lifecycle_state},
+            payload={"version_number": version_num, "diff": diff_patch, "state": existing_artifact.lifecycle_state},
+            owner_id=str(existing_artifact.owner_id),
         )
 
         return 201, ArtifactResponseSchema.from_model(existing_artifact)
@@ -257,7 +288,7 @@ def upload_document(
         created_by=principal,
         collection=collection,
         inherit_permissions=(collection is not None),
-        lifecycle_state=lifecycle_state,
+        lifecycle_state=_initial_lifecycle_state(lifecycle_state, request),
     )
 
     doc = DocumentArtifact.objects.create(
@@ -288,7 +319,8 @@ def upload_document(
     publish_artifact_event(
         event_type="artifact.created",
         artifact_id=str(artifact.id),
-        payload={"title": artifact.title, "type": "document", "state": lifecycle_state},
+        payload={"title": artifact.title, "type": "document", "state": artifact.lifecycle_state},
+        owner_id=str(artifact.owner_id),
     )
 
     return 201, ArtifactResponseSchema.from_model(artifact)
@@ -299,7 +331,9 @@ def upload_document(
 @router.get("/", response=list[ArtifactResponseSchema])
 def list_artifacts(request, collection_id: UUID | None = None, type: str | None = None, query: str = ""):
     """List and filter artifacts within the caller's scoped workspace."""
-    qs = Artifact.objects.filter(deleted_at__isnull=True)
+    qs = Artifact.objects.filter(deleted_at__isnull=True).select_related(
+        "owner", "created_by", "current_version", "skill", "decision", "document", "memory"
+    )
     qs = scope_artifacts_queryset(qs, request)
 
     if collection_id:
@@ -318,24 +352,45 @@ def list_artifacts(request, collection_id: UUID | None = None, type: str | None 
 
 # --- Governance Approval & Rejection Endpoints ---
 
+def _require_human_reviewer(request):
+    """
+    Governance gate: only human principals may approve/reject.
+
+    Agent tokens (autonomous actors) cannot transition their own proposals
+    into a trusted state — that is the human-in-the-loop guarantee. Returns
+    an error dict when the actor is an agent, else None.
+    """
+    if getattr(request, "agent_token", None) is not None:
+        return {"message": "Only human reviewers can approve or reject artifacts."}
+    return None
+
+
 @router.post("/{artifact_id}/approve", response={200: ArtifactResponseSchema, 403: dict, 404: dict})
 def approve_artifact(request, artifact_id: UUID):
     """
     Approve an artifact proposal. Transitions lifecycle state to `approved`
     and emits a real-time event to wake up waiting background agents.
+
+    Restricted to human reviewers — agent tokens cannot self-approve.
     """
+    denied = _require_human_reviewer(request)
+    if denied:
+        return 403, denied
+
     qs = Artifact.objects.filter(deleted_at__isnull=True)
     qs = scope_artifacts_queryset(qs, request)
     artifact = get_object_or_404(qs, id=artifact_id)
 
-    artifact.lifecycle_state = "approved"
+    previous_state = artifact.lifecycle_state
+    artifact.lifecycle_state = LifecycleState.APPROVED
     artifact.save(update_fields=["lifecycle_state", "updated_at"])
 
     # Publish real-time state change event
     publish_artifact_event(
         event_type="artifact.state_changed",
         artifact_id=str(artifact.id),
-        payload={"new_state": "approved", "previous_state": "draft", "actor": str(request.user)},
+        payload={"new_state": artifact.lifecycle_state, "previous_state": previous_state, "actor": str(request.user)},
+        owner_id=str(artifact.owner_id),
     )
 
     return 200, ArtifactResponseSchema.from_model(artifact)
@@ -346,19 +401,27 @@ def reject_artifact(request, artifact_id: UUID):
     """
     Reject or deny an artifact proposal. Transitions lifecycle state to `rejected`
     and emits a real-time event.
+
+    Restricted to human reviewers — agent tokens cannot self-reject.
     """
+    denied = _require_human_reviewer(request)
+    if denied:
+        return 403, denied
+
     qs = Artifact.objects.filter(deleted_at__isnull=True)
     qs = scope_artifacts_queryset(qs, request)
     artifact = get_object_or_404(qs, id=artifact_id)
 
-    artifact.lifecycle_state = "rejected"
+    previous_state = artifact.lifecycle_state
+    artifact.lifecycle_state = LifecycleState.REJECTED
     artifact.save(update_fields=["lifecycle_state", "updated_at"])
 
     # Publish real-time state change event
     publish_artifact_event(
         event_type="artifact.state_changed",
         artifact_id=str(artifact.id),
-        payload={"new_state": "rejected", "previous_state": "draft", "actor": str(request.user)},
+        payload={"new_state": artifact.lifecycle_state, "previous_state": previous_state, "actor": str(request.user)},
+        owner_id=str(artifact.owner_id),
     )
 
     return 200, ArtifactResponseSchema.from_model(artifact)
@@ -405,7 +468,9 @@ def list_skills(request):
     Dynamic Skill Registry: List all available skills across all collections
     accessible to the caller.
     """
-    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill")
+    qs = Artifact.objects.filter(deleted_at__isnull=True, type="skill").select_related(
+        "owner", "created_by", "current_version", "skill"
+    )
     qs = scope_artifacts_queryset(qs, request)
     return [ArtifactResponseSchema.from_model(a) for a in qs]
 
@@ -506,15 +571,14 @@ def update_artifact(request, artifact_id: UUID, data: ArtifactUpdateSchema):
     artifact.save()
 
     # Subtype-specific updates
+    new_text_content = None
     if artifact.type == "skill" and hasattr(artifact, "skill"):
-        skill = artifact.skill
         if data.skill_md_content is not None:
-            skill.skill_md_content = data.skill_md_content
-        skill.save()
+            new_text_content = data.skill_md_content
     elif artifact.type == "decision" and hasattr(artifact, "decision"):
         decision = artifact.decision
         if data.decision_text is not None:
-            decision.decision_text = data.decision_text
+            new_text_content = data.decision_text
         if data.rationale is not None:
             decision.rationale = data.rationale
         if data.decision_status is not None:
@@ -523,16 +587,28 @@ def update_artifact(request, artifact_id: UUID, data: ArtifactUpdateSchema):
     elif artifact.type == "memory" and hasattr(artifact, "memory"):
         mem = artifact.memory
         if data.memory_content is not None:
-            mem.content = data.memory_content
+            new_text_content = data.memory_content
         if data.memory_scope is not None:
             mem.scope = data.memory_scope
         mem.save()
+
+    if new_text_content is not None:
+        version = update_artifact_version(
+            artifact,
+            new_text_content,
+            principal,
+            commit_message="Updated content",
+        )
+        version_num = version.version_number
+    else:
+        version_num = artifact.current_version.version_number if artifact.current_version else 1
 
     # Publish real-time update event
     publish_artifact_event(
         event_type="artifact.updated",
         artifact_id=str(artifact.id),
-        payload={"title": artifact.title, "state": artifact.lifecycle_state},
+        payload={"title": artifact.title, "state": artifact.lifecycle_state, "version_number": version_num},
+        owner_id=str(artifact.owner_id),
     )
 
     return 200, ArtifactResponseSchema.from_model(artifact)
@@ -610,7 +686,7 @@ def list_artifact_versions(request, artifact_id: UUID):
 @router.post("/{artifact_id}/revert", response={201: ArtifactResponseSchema, 400: dict, 403: dict, 404: dict})
 def revert_artifact(request, artifact_id: UUID, target_version_number: int, commit_message: str = ""):
     """
-    Revert an artifact to a historical version.
+    Revert an artifact of any subtype to a historical version.
     This action creates a NEW append-only ArtifactVersion with the historical content
     and records a diff against the current state.
     """
@@ -626,29 +702,19 @@ def revert_artifact(request, artifact_id: UUID, target_version_number: int, comm
     if not target_version:
         return 404, {"message": f"Version {target_version_number} not found for this artifact"}
 
-    if artifact.type == "document" and hasattr(artifact, "document"):
-        doc = artifact.document
-        current_content = doc.file.read()
-        doc.file.seek(0)
+    new_version = revert_artifact_to_version(
+        artifact=artifact,
+        target_version=target_version,
+        created_by=principal,
+        commit_message=commit_message,
+    )
 
-        target_content = target_version.file_instance.read()
-        target_version.file_instance.seek(0)
-
-        new_num = artifact.versions.count() + 1
-        new_version = ArtifactVersion.objects.create(
-            artifact=artifact,
-            version_number=new_num,
-            file_instance=ContentFile(target_content, name=f"v{new_num}_revert_to_v{target_version_number}_{artifact.title}"),
-            diff_content=compute_diff(current_content, target_content),
-            created_by=principal,
-            commit_message=commit_message or f"Reverted artifact to version {target_version_number}",
-        )
-
-        doc.file.save(artifact.title, ContentFile(target_content), save=False)
-        doc.save()
-
-        artifact.current_version = new_version
-        artifact.save()
+    publish_artifact_event(
+        event_type="artifact.updated",
+        artifact_id=str(artifact.id),
+        payload={"version_number": new_version.version_number, "state": artifact.lifecycle_state},
+        owner_id=str(artifact.owner_id),
+    )
 
     return 201, ArtifactResponseSchema.from_model(artifact)
 
@@ -704,8 +770,8 @@ def get_relationships(request, artifact_id: UUID):
     qs = scope_artifacts_queryset(qs, request)
     artifact = get_object_or_404(qs, id=artifact_id)
 
-    outgoing = artifact.outgoing_relationships.all()
-    incoming = artifact.incoming_relationships.all()
+    outgoing = artifact.outgoing_relationships.select_related("from_artifact", "to_artifact", "created_by").all()
+    incoming = artifact.incoming_relationships.select_related("from_artifact", "to_artifact", "created_by").all()
 
     return {
         "outgoing": [RelationshipResponseSchema.from_model(r) for r in outgoing],
