@@ -1,20 +1,24 @@
+import json
+import time
 from datetime import datetime
 from uuid import UUID
 
 from django.core.files.base import ContentFile
-from django.http import FileResponse
+from django.http import FileResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import File, Router, UploadedFile
 
+from apps.accounts.auth import lore_auth
 from apps.collections.models import Collection
+from apps.common.realtime import publish_artifact_event, subscribe_events, unsubscribe_events
 from apps.common.security import (
     get_allowed_collections_for_request,
     scope_artifacts_queryset,
     scope_collections_queryset,
 )
-from apps.accounts.auth import lore_auth
 
+from .chunking import chunk_text_content
 from .models import (
     Artifact,
     ArtifactComment,
@@ -38,11 +42,38 @@ from .schemas import (
     RelationshipCreateSchema,
     RelationshipResponseSchema,
 )
-from .chunking import chunk_text_content
 from .utils import compute_diff
 from .wiki_links import extract_and_sync_wiki_links
 
 router = Router(tags=["Artifacts & Graph"])
+
+
+# --- Server-Sent Events (SSE) Real-Time Stream ---
+
+@router.get("/stream/events")
+def event_stream(request):
+    """
+    Server-Sent Events (SSE) stream delivering real-time artifact updates,
+    state changes, and diff patch notifications to Web UI clients and AI Agents.
+    """
+    def event_generator():
+        q = subscribe_events()
+        try:
+            yield "event: connected\ndata: {\"status\": \"connected\"}\n\n"
+            while True:
+                try:
+                    event_data = q.get(timeout=25)
+                    yield f"event: {event_data['event']}\ndata: {json.dumps(event_data)}\n\n"
+                except Exception:
+                    # Ping keepalive every 25 seconds
+                    yield "event: ping\ndata: {\"ping\": true}\n\n"
+        finally:
+            unsubscribe_events(q)
+
+    response = StreamingHttpResponse(event_generator(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
 
 
 # --- Artifact Creation & Upload ---
@@ -122,6 +153,13 @@ def create_artifact(request, data: ArtifactCreateSchema):
         extract_and_sync_wiki_links(artifact, text_to_scan, principal)
         chunk_text_content(artifact, version, text_to_scan)
 
+    # Publish real-time event
+    publish_artifact_event(
+        event_type="artifact.created",
+        artifact_id=str(artifact.id),
+        payload={"title": artifact.title, "type": artifact.type, "state": artifact.lifecycle_state},
+    )
+
     return 201, ArtifactResponseSchema.from_model(artifact)
 
 
@@ -177,11 +215,12 @@ def upload_document(
 
         # Version increment
         version_num = existing_artifact.versions.count() + 1
+        diff_patch = compute_diff(old_content, new_content)
         version = ArtifactVersion.objects.create(
             artifact=existing_artifact,
             version_number=version_num,
             file_instance=ContentFile(old_content, name=f"v{version_num}_{file.name}"),
-            diff_content=compute_diff(old_content, new_content),
+            diff_content=diff_patch,
             created_by=principal,
             commit_message=f"Update document to version {version_num}",
         )
@@ -200,6 +239,13 @@ def upload_document(
             chunk_text_content(existing_artifact, version, text_str)
         except Exception:
             pass
+
+        # Publish real-time update event
+        publish_artifact_event(
+            event_type="artifact.updated",
+            artifact_id=str(existing_artifact.id),
+            payload={"version_number": version_num, "diff": diff_patch, "state": lifecycle_state},
+        )
 
         return 201, ArtifactResponseSchema.from_model(existing_artifact)
 
@@ -238,6 +284,13 @@ def upload_document(
     except Exception:
         pass
 
+    # Publish real-time creation event
+    publish_artifact_event(
+        event_type="artifact.created",
+        artifact_id=str(artifact.id),
+        payload={"title": artifact.title, "type": "document", "state": lifecycle_state},
+    )
+
     return 201, ArtifactResponseSchema.from_model(artifact)
 
 
@@ -252,7 +305,6 @@ def list_artifacts(request, collection_id: UUID | None = None, type: str | None 
     if collection_id:
         qs = qs.filter(collection_id=collection_id)
     elif not type:
-        # If no specific filtering, list root level
         qs = qs.filter(collection__isnull=True)
 
     if type:
@@ -262,6 +314,87 @@ def list_artifacts(request, collection_id: UUID | None = None, type: str | None 
         qs = qs.filter(title__icontains=query)
 
     return [ArtifactResponseSchema.from_model(a) for a in qs]
+
+
+# --- Governance Approval & Rejection Endpoints ---
+
+@router.post("/{artifact_id}/approve", response={200: ArtifactResponseSchema, 403: dict, 404: dict})
+def approve_artifact(request, artifact_id: UUID):
+    """
+    Approve an artifact proposal. Transitions lifecycle state to `approved`
+    and emits a real-time event to wake up waiting background agents.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True)
+    qs = scope_artifacts_queryset(qs, request)
+    artifact = get_object_or_404(qs, id=artifact_id)
+
+    artifact.lifecycle_state = "approved"
+    artifact.save(update_fields=["lifecycle_state", "updated_at"])
+
+    # Publish real-time state change event
+    publish_artifact_event(
+        event_type="artifact.state_changed",
+        artifact_id=str(artifact.id),
+        payload={"new_state": "approved", "previous_state": "draft", "actor": str(request.user)},
+    )
+
+    return 200, ArtifactResponseSchema.from_model(artifact)
+
+
+@router.post("/{artifact_id}/reject", response={200: ArtifactResponseSchema, 403: dict, 404: dict})
+def reject_artifact(request, artifact_id: UUID):
+    """
+    Reject or deny an artifact proposal. Transitions lifecycle state to `rejected`
+    and emits a real-time event.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True)
+    qs = scope_artifacts_queryset(qs, request)
+    artifact = get_object_or_404(qs, id=artifact_id)
+
+    artifact.lifecycle_state = "rejected"
+    artifact.save(update_fields=["lifecycle_state", "updated_at"])
+
+    # Publish real-time state change event
+    publish_artifact_event(
+        event_type="artifact.state_changed",
+        artifact_id=str(artifact.id),
+        payload={"new_state": "rejected", "previous_state": "draft", "actor": str(request.user)},
+    )
+
+    return 200, ArtifactResponseSchema.from_model(artifact)
+
+
+# --- Token-Efficient Delta Patch Endpoint ---
+
+@router.get("/{artifact_id}/delta", response={200: dict, 404: dict})
+def get_artifact_delta(request, artifact_id: UUID, since_version: int = 1):
+    """
+    Retrieve lightweight diff patches between `since_version` and current version,
+    preventing LLM agents from wasting tokens re-reading unchanged documents.
+    """
+    qs = Artifact.objects.filter(deleted_at__isnull=True)
+    qs = scope_artifacts_queryset(qs, request)
+    artifact = get_object_or_404(qs, id=artifact_id)
+
+    versions = artifact.versions.filter(version_number__gt=since_version).order_by("version_number")
+    patches = []
+    for v in versions:
+        patches.append({
+            "version_number": v.version_number,
+            "commit_message": v.commit_message,
+            "diff_content": v.diff_content,
+            "created_at": v.created_at.isoformat(),
+        })
+
+    current_ver = artifact.current_version.version_number if artifact.current_version else 1
+    return 200, {
+        "artifact_id": str(artifact.id),
+        "title": artifact.title,
+        "current_version": current_ver,
+        "since_version": since_version,
+        "delta_count": len(patches),
+        "patches": patches,
+    }
 
 
 # --- Dynamic Skill Registry ---
@@ -394,6 +527,13 @@ def update_artifact(request, artifact_id: UUID, data: ArtifactUpdateSchema):
         if data.memory_scope is not None:
             mem.scope = data.memory_scope
         mem.save()
+
+    # Publish real-time update event
+    publish_artifact_event(
+        event_type="artifact.updated",
+        artifact_id=str(artifact.id),
+        payload={"title": artifact.title, "state": artifact.lifecycle_state},
+    )
 
     return 200, ArtifactResponseSchema.from_model(artifact)
 
@@ -534,7 +674,6 @@ def create_relationship(request, data: RelationshipCreateSchema):
     if not principal:
         return 400, {"message": "No principal found"}
 
-    # Scoped check for both from and to artifacts
     qs = Artifact.objects.filter(deleted_at__isnull=True)
     qs = scope_artifacts_queryset(qs, request)
 
@@ -547,6 +686,14 @@ def create_relationship(request, data: RelationshipCreateSchema):
         relation_type=data.relation_type,
         created_by=principal,
     )
+
+    # Publish relationship created event
+    publish_artifact_event(
+        event_type="artifact.relationship_created",
+        artifact_id=str(from_art.id),
+        payload={"to_artifact_id": str(to_art.id), "relation_type": data.relation_type},
+    )
+
     return 201, RelationshipResponseSchema.from_model(rel)
 
 
