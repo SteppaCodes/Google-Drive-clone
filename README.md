@@ -44,6 +44,9 @@ Existing systems store AI-generated work as documents, files, chat logs, or repo
 
 We call the infrastructure that solves this an **Artifact Plane**. It does for AI-generated work what Git did for source code: gives every artifact a stable identity so it can be versioned, related, reviewed, and reused.
 
+<img width="1366" height="604" alt="image" src="https://github.com/user-attachments/assets/facbfa5d-bec5-4ace-9eee-9895575e06b8" />
+
+
 ## How It Fits Together
 
 ```
